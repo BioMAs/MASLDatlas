@@ -13,12 +13,16 @@ library(ggpubr)
 library(shinyWidgets)
 library(fenr)
 library(stringr)
+library(jsonlite)
 
 use_virtualenv("fibrosis_shiny")
 sc <- import("scanpy")
 dc <- import("decoupler")
 pydeseq2_dds <- import("pydeseq2.dds")
 pydeseq2_ds <- import("pydeseq2.ds")
+
+# Load datasets configuration
+datasets_config <- jsonlite::fromJSON("datasets_config.json")
 
 ui <- fluidPage(
   disconnectMessage(
@@ -545,18 +549,19 @@ server <- function(input, output,session) {
   ##ui actions
   
   output$dataset_selection_list <- renderUI({
-    if(input$selection_organism == "Human") {
-      selectInput("selection_dataset", "Select Dataset",
-                  choices = list("Individual Dataset" = list("GSE136103", "GSE181483")))
-    } else if(input$selection_organism == "Mouse") {
-      selectInput("selection_dataset", "Select Dataset",
-                  choices = list("Datasets" = list("GSE145086")))
-    } else if(input$selection_organism == "Zebrafish") {
-      selectInput("selection_dataset", "Select Dataset",
-                  choices = "GSE181987")
-    } else if(input$selection_organism == "Integrated") {
-      selectInput("selection_dataset", "Select Dataset",
-                  choices = "Fibrotic Integrated Cross Species")
+    if(input$selection_organism %in% names(datasets_config)) {
+      organism_data <- datasets_config[[input$selection_organism]]
+      
+      # Convert the list structure to choices format
+      if(length(organism_data) == 1 && length(organism_data[[1]]) == 1) {
+        # Simple case: single dataset
+        selectInput("selection_dataset", "Select Dataset",
+                    choices = organism_data[[1]])
+      } else {
+        # Complex case: nested structure
+        selectInput("selection_dataset", "Select Dataset",
+                    choices = organism_data)
+      }
     }
   })
   

@@ -74,9 +74,59 @@ The application includes several key features:
 ## Data Structure
 
 The application expects data in the following locations:
+- `datasets/`: Contains the H5AD files organized by organism (Human/, Mouse/, Zebrafish/, Integrated/)
 - `enrichment_sets/`: Contains RDS and RData files for different species and analysis types
 - `www/`: Contains static assets
 - `app_cache/`: Contains cached data for improved performance
+- `datasets_config.json`: Configuration file that defines available datasets
+
+## Dataset Management
+
+The application uses a JSON configuration file (`datasets_config.json`) to manage available datasets. This allows adding new datasets without modifying the application code.
+
+### Adding New Datasets
+
+1. **Using the R script (recommended):**
+```R
+source("dataset_manager.R")
+
+# Add a new dataset
+add_dataset("Human", "Individual Dataset", "GSE123456")
+add_dataset("Mouse", "Datasets", "GSE789012")
+
+# List all datasets
+list_all_datasets()
+```
+
+2. **Manual editing of datasets_config.json:**
+```json
+{
+  "Human": {
+    "Individual Dataset": ["GSE136103", "GSE181483", "GSE123456"]
+  },
+  "Mouse": {
+    "Datasets": ["GSE145086", "GSE789012"]
+  }
+}
+```
+
+3. **Place the corresponding H5AD file** in the appropriate directory:
+   - For Human datasets: `datasets/Human/GSE123456.h5ad`
+   - For Mouse datasets: `datasets/Mouse/GSE789012.h5ad`
+
+### Dataset File Structure
+```
+datasets/
+├── Human/
+│   ├── GSE136103.h5ad
+│   └── GSE181483.h5ad
+├── Mouse/
+│   └── GSE145086.h5ad
+├── Zebrafish/
+│   └── GSE181987.h5ad
+└── Integrated/
+    └── Fibrotic Integrated Cross Species.h5ad
+```
 
 ## Troubleshooting
 

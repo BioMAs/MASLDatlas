@@ -1,0 +1,23 @@
+{
+  "Human": {
+    "Individual Dataset": [
+      "GSE136103",
+      "GSE181483"
+    ]
+  },
+  "Mouse": {
+    "Datasets": [
+      "GSE145086"
+    ]
+  },
+  "Zebrafish": {
+    "Datasets": [
+      "GSE181987"
+    ]
+  },
+  "Integrated": {
+    "Datasets": [
+      "Fibrotic Integrated Cross Species"
+    ]
+  }
+}

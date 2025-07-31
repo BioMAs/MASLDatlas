@@ -10,6 +10,7 @@ dependencies:
   - r-shinycssloaders
   - r-bslib
   - r-dt
+  - r-jsonlite
   - pip:
       - scanpy
       - python-igraph
