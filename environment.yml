@@ -1,0 +1,22 @@
+name: fibrosis_shiny
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - r-base>=4.0
+  - r-shiny
+  - r-reticulate
+  - r-shinycssloaders
+  - r-bslib
+  - r-dt
+  - pip:
+      - scanpy
+      - python-igraph
+      - leidenalg
+      - decoupler
+      - omnipath
+      - marsilea==0.4.0
+      - pydeseq2
+      - adjustText
+      - psutil
