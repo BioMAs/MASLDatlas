@@ -4,15 +4,19 @@ This Shiny application provides an interactive interface for exploring and analy
 
 ## Prerequisites
 
-Before running the application, ensure you have the following installed:
+### For Local Installation
 - R (version 4.0 or higher)
 - Python 3.9
 - Required R packages:
-  - shiny
-  - reticulate
-  - shinycssloaders
-  - bslib
-  - DT
+  - shiny, bslib, dplyr, ggplot2
+  - shinydisconnect, shinycssloaders, shinyjs
+  - reticulate, DT, readr, shinyBS
+  - ggpubr, shinyWidgets, fenr, stringr, jsonlite
+
+### For Docker Installation (Recommended)
+- Docker Desktop installed and running
+- At least 4GB of available RAM
+- 10GB of free disk space
 
 ## Installation
 
@@ -42,12 +46,140 @@ This script will:
 
 ## Running the Application
 
-To launch the application, run:
+### Option 1: Local R Installation
+
+To launch the application locally, run:
 ```R
 shiny::runApp()
 ```
 
 The application will be available in your default web browser.
+
+### Option 2: Docker Container (Recommended)
+
+#### Prerequisites for Docker
+- Docker installed on your system
+- At least 4GB of available RAM
+
+#### Building and Running with Docker
+
+1. **Build the Docker image:**
+```bash
+docker build -t masldatlas-app .
+```
+
+2. **Run the container:**
+```bash
+docker run -p 3838:3838 masldatlas-app
+```
+
+3. **Access the application:**
+Open your web browser and navigate to: `http://localhost:3838`
+
+#### Advanced Docker Usage
+
+**Run with custom port:**
+```bash
+docker run -p 8080:3838 masldatlas-app
+# Access at http://localhost:8080
+```
+
+**Run in detached mode (background):**
+```bash
+docker run -d -p 3838:3838 --name masldatlas masldatlas-app
+```
+
+**Stop the container:**
+```bash
+docker stop masldatlas
+```
+
+**View container logs:**
+```bash
+docker logs masldatlas
+```
+
+**Mount local datasets directory (for development):**
+```bash
+docker run -p 3838:3838 -v $(pwd)/datasets:/app/datasets masldatlas-app
+```
+
+#### Using Docker Compose (Alternative)
+
+Create a `docker-compose.yml` file:
+```yaml
+version: '3.8'
+services:
+  masldatlas:
+    build: .
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./datasets:/app/datasets
+      - ./datasets_config.json:/app/datasets_config.json
+    restart: unless-stopped
+```
+
+Then run:
+```bash
+docker-compose up -d
+```
+
+#### Quick Start Scripts
+
+For even easier deployment, use the provided scripts:
+
+**Start the application:**
+```bash
+./start.sh          # Default port 3838
+./start.sh 8080     # Custom port 8080
+```
+
+**Stop the application:**
+```bash
+./stop.sh
+```
+
+**Rebuild the Docker image (if packages are missing):**
+```bash
+./rebuild.sh
+```
+
+These scripts will automatically:
+- Build the Docker image if needed
+- Handle port conflicts
+- Mount necessary volumes
+- Provide helpful status messages
+
+## Production Deployment
+
+For production environments, consider the following:
+
+### Resource Requirements
+- **RAM**: Minimum 4GB, recommended 8GB+
+- **CPU**: Multi-core recommended for multiple users
+- **Storage**: 10GB+ for application and datasets
+
+### Security Considerations
+```bash
+# Run container with limited privileges
+docker run -p 3838:3838 --user 1000:1000 masldatlas-app
+
+# Use read-only filesystem where possible
+docker run -p 3838:3838 --read-only --tmpfs /tmp masldatlas-app
+```
+
+### Monitoring
+```bash
+# Monitor resource usage
+docker stats masldatlas
+
+# View application logs
+docker logs -f masldatlas
+
+# Health check
+curl -f http://localhost:3838 || echo "Application not responding"
+```
 
 ## Features
 
@@ -130,11 +262,53 @@ datasets/
 
 ## Troubleshooting
 
-If you encounter any issues:
+### General Issues
 1. Ensure all required packages are properly installed
 2. Check Python virtual environment is correctly set up
 3. Verify data files are present in the correct locations
 4. Clear browser cache if the interface is not loading properly
+
+### Docker-specific Issues
+
+**Container fails to build:**
+- Check Docker daemon is running: `docker info`
+- Ensure sufficient disk space (at least 5GB free)
+- Try building with more verbose output: `docker build --no-cache -t masldatlas-app .`
+
+**Container starts but application is not accessible:**
+- Verify port mapping: `docker ps` to see running containers
+- Check if port 3838 is already in use: `lsof -i :3838` (macOS/Linux) or `netstat -an | findstr 3838` (Windows)
+- Try a different port: `docker run -p 8080:3838 masldatlas-app`
+
+**Application loads but datasets are missing:**
+- Ensure datasets are in the correct directory structure
+- Check file permissions: `ls -la datasets/`
+- Verify `datasets_config.json` is properly formatted: `cat datasets_config.json | python -m json.tool`
+
+**Performance issues:**
+- Increase Docker memory allocation (Docker Desktop > Preferences > Resources)
+- Monitor container resources: `docker stats masldatlas`
+
+**Container exits immediately:**
+- Check container logs: `docker logs masldatlas-app`
+- Run container interactively for debugging: `docker run -it --entrypoint /bin/bash masldatlas-app`
+
+**Missing R packages error (e.g., "there is no package called 'dplyr'"):**
+- Rebuild the Docker image: `docker build --no-cache -t masldatlas-app .`
+- Ensure all R packages are listed in `environment.yml`
+- Check if the conda environment is properly activated in the container
+- Some packages (like `fenr`, `shinydisconnect`) are only available via CRAN and are installed separately in the Dockerfile
+
+**Package not found during conda build:**
+- Check if the package is available via conda: `conda search -c conda-forge -c r r-packagename`
+- If not available, add it to the CRAN installation section in the Dockerfile
+- Use the `check_conda_packages.sh` script to verify package availability
+
+**Locale warnings (LC_* settings failed):**
+- These warnings are usually harmless but if they cause issues, try:
+  ```bash
+  docker run -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -p 3838:3838 masldatlas-app
+  ```
 
 ## License
 

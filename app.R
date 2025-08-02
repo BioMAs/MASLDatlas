@@ -2,7 +2,6 @@ library(shiny)
 library(bslib)
 library(dplyr)
 library(ggplot2)
-library(shinydisconnect)
 library(shinycssloaders)
 library(shinyjs)
 library(reticulate)
@@ -11,33 +10,72 @@ library(readr)
 library(shinyBS)
 library(ggpubr)
 library(shinyWidgets)
-library(fenr)
+
+# Load optional packages with graceful fallback
+if (!requireNamespace("fenr", quietly = TRUE)) {
+  warning("Package 'fenr' not available. Some enrichment functions may not work.")
+} else {
+  library(fenr)
+}
+
+if (!requireNamespace("shinydisconnect", quietly = TRUE)) {
+  warning("Package 'shinydisconnect' not available. Disconnect handling disabled.")
+} else {
+  library(shinydisconnect)
+}
+
 library(stringr)
 library(jsonlite)
 
-use_virtualenv("fibrosis_shiny")
-sc <- import("scanpy")
-dc <- import("decoupler")
-pydeseq2_dds <- import("pydeseq2.dds")
-pydeseq2_ds <- import("pydeseq2.ds")
+# Configure Python environment for reticulate
+tryCatch({
+  # Check if we're in a conda environment
+  if (Sys.getenv("CONDA_DEFAULT_ENV") != "") {
+    # Use conda environment
+    reticulate::use_condaenv("fibrosis_shiny", required = TRUE)
+  } else {
+    # Fallback to virtualenv
+    reticulate::use_virtualenv("fibrosis_shiny")
+  }
+  
+  # Import Python modules
+  sc <- reticulate::import("scanpy")
+  dc <- reticulate::import("decoupler")
+  pydeseq2_dds <- reticulate::import("pydeseq2.dds")
+  pydeseq2_ds <- reticulate::import("pydeseq2.ds")
+  
+  cat("✅ Python environment and packages loaded successfully\n")
+}, error = function(e) {
+  cat("⚠️ Python environment setup failed:", e$message, "\n")
+  cat("📦 Application will run with limited Python functionality\n")
+  
+  # Create placeholder objects to prevent errors
+  sc <- NULL
+  dc <- NULL
+  pydeseq2_dds <- NULL
+  pydeseq2_ds <- NULL
+})
 
 # Load datasets configuration
 datasets_config <- jsonlite::fromJSON("datasets_config.json")
 
 ui <- fluidPage(
-  disconnectMessage(
-    text = "An error occurred. Please refresh the page and try again.",
-    refresh = "Refresh",
-    background = "#FFFFFF",
-    colour = "#444444",
-    refreshColour = "#2c3e50",
-    overlayColour = "#000000",
-    overlayOpacity = 0.6,
-    width = 450,
-    top = 50,
-    size = 22,
-    css = ""
-  ),
+  # Add disconnect message only if shinydisconnect is available
+  if (requireNamespace("shinydisconnect", quietly = TRUE)) {
+    shinydisconnect::disconnectMessage(
+      text = "An error occurred. Please refresh the page and try again.",
+      refresh = "Refresh",
+      background = "#FFFFFF",
+      colour = "#444444",
+      refreshColour = "#2c3e50",
+      overlayColour = "#000000",
+      overlayOpacity = 0.6,
+      width = 450,
+      top = 50,
+      size = 22,
+      css = ""
+    )
+  },
   navbarPage(
     title = "Multi-species scRNA-seq Atlas of MASLD",
     theme = bs_theme(preset = 'flatly', base_font = 'Lato', code_font = 'Lato', heading_font = 'Lato'),

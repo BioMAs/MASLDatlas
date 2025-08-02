@@ -1,0 +1,58 @@
+# Docker ignore file for MASLDatlas
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# R specific
+.Rhistory
+.RData
+.Rapp.history
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Cache and temporary files
+app_cache/
+figures/
+*.png
+*.jpg
+*.jpeg
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Large files that should be mounted as volumes
+# datasets/
+# enrichment_sets/
+
+# Scripts (keep these as they might be useful in container)
+# start.sh
+# stop.sh
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Logs
+*.log

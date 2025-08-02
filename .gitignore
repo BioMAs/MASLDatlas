@@ -63,3 +63,7 @@ Thumbs.db
 # *.h5ad
 # *.rds
 # *.RData
+
+# Docker volumes and logs
+docker-compose.override.yml
+*.log

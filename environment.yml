@@ -1,6 +1,7 @@
 name: fibrosis_shiny
 channels:
   - conda-forge
+  - r
 dependencies:
   - python=3.9
   - pip
@@ -11,6 +12,14 @@ dependencies:
   - r-bslib
   - r-dt
   - r-jsonlite
+  - r-dplyr
+  - r-ggplot2
+  - r-shinyjs
+  - r-readr
+  - r-shinybs
+  - r-ggpubr
+  - r-shinywidgets
+  - r-stringr
   - pip:
       - scanpy
       - python-igraph

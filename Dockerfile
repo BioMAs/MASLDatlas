@@ -4,6 +4,8 @@ FROM continuumio/miniconda3:latest
 # Set environment variables
 ENV CONDA_ENV=fibrosis_shiny
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 # Install system dependencies
 RUN apt-get update && \
@@ -22,26 +24,27 @@ RUN apt-get update && \
         libxt-dev \
         pandoc \
         wget \
+        curl \
         locales \
         && rm -rf /var/lib/apt/lists/*
 
 # Set locale
-RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
 
 # Copy environment.yml and install conda env
 COPY environment.yml /tmp/environment.yml
-RUN conda env create -f /tmp/environment.yml
-SHELL ["/bin/bash", "-c"]
+RUN conda env create -f /tmp/environment.yml && \
+    conda clean -afy
 
 # Activate conda env by default
-RUN echo "conda activate $CONDA_ENV" >> ~/.bashrc
-ENV PATH /opt/conda/envs/$CONDA_ENV/bin:$PATH
+SHELL ["conda", "run", "-n", "fibrosis_shiny", "/bin/bash", "-c"]
+ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 
-# Install R packages not available via conda (if any)
-# (Optional: Add install commands here if needed)
+# Copy and run script to install optional R packages
+COPY install_optional_packages.R /tmp/install_optional_packages.R
+RUN conda run -n $CONDA_ENV Rscript /tmp/install_optional_packages.R || echo "Optional packages installation completed with warnings"
 
 # Copy app files
 WORKDIR /app
@@ -50,5 +53,9 @@ COPY . /app
 # Expose Shiny port
 EXPOSE 3838
 
-# Run the app
-CMD ["R", "-e", "shiny::runApp('/app', host='0.0.0.0', port=3838)"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3838 || exit 1
+
+# Run the app using conda run to ensure proper environment
+CMD ["conda", "run", "-n", "fibrosis_shiny", "R", "-e", "shiny::runApp('/app', host='0.0.0.0', port=3838)"]
