@@ -49,6 +49,21 @@ venv.bak/
 *.swp
 *.swo
 
+# Temporary files and directories
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Project specific temporary files
+*.rds
+*.RData
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -58,12 +73,31 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Large data files (uncomment if needed)
-# datasets/
-# *.h5ad
-# *.rds
-# *.RData
+# Large data files (consider using Git LFS)
+*.h5ad
+*.h5
+*.rds
+*.RData
+
+# Dataset management
+datasets/
+dataset_hashes.txt
+datasets_sources_*_template.json
 
 # Docker volumes and logs
 docker-compose.override.yml
 *.log
+
+# Production deployment
+.env.production
+docker-compose.prod.yml.bak
+deploy.log
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# SSL certificates (if stored locally)
+certs/
+ssl/

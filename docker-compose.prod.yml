@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  masldatlas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: masldatlas-app:latest
+    container_name: masldatlas-prod
+    restart: unless-stopped
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    
+    # Environment variables
+    environment:
+      - SHINY_HOST=0.0.0.0
+      - SHINY_PORT=3838
+      - R_LIBS_USER=/app/rlibs
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      # Dataset download options
+      - AUTO_DOWNLOAD_DATASETS=true
+      - SKIP_DATASET_CHECK=false
+    
+    # Volume mounts for persistent data
+    volumes:
+      - ./datasets:/app/datasets:ro
+      - ./enrichment_sets:/app/enrichment_sets:ro
+      - ./datasets_config.json:/app/datasets_config.json:ro
+      - masldatlas_cache:/app/app_cache
+      - masldatlas_logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3838/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Shiny needs write access for temporary files
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1G
+    
+    # Traefik labels for reverse proxy configuration
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+      
+      # Router configuration
+      - "traefik.http.routers.masldatlas.rule=Host(`masldatlas.yourdomain.com`)"
+      - "traefik.http.routers.masldatlas.entrypoints=websecure"
+      - "traefik.http.routers.masldatlas.tls=true"
+      - "traefik.http.routers.masldatlas.tls.certresolver=letsencrypt"
+      
+      # Service configuration
+      - "traefik.http.services.masldatlas.loadbalancer.server.port=3838"
+      - "traefik.http.services.masldatlas.loadbalancer.server.scheme=http"
+      
+      # Health check configuration
+      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.path=/"
+      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.timeout=10s"
+      
+      # Middleware for security headers
+      - "traefik.http.routers.masldatlas.middlewares=masldatlas-headers,masldatlas-ratelimit"
+      
+      # Security headers middleware
+      - "traefik.http.middlewares.masldatlas-headers.headers.customRequestHeaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.masldatlas-headers.headers.customRequestHeaders.X-Forwarded-For="
+      - "traefik.http.middlewares.masldatlas-headers.headers.SSLRedirect=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.STSSeconds=31536000"
+      - "traefik.http.middlewares.masldatlas-headers.headers.STSIncludeSubdomains=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.STSPreload=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.browserXSSFilter=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.masldatlas-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()"
+      
+      # Rate limiting middleware
+      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.burst=200"
+      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.period=1m"
+      
+      # Optional: HTTP to HTTPS redirect
+      - "traefik.http.routers.masldatlas-http.rule=Host(`masldatlas.yourdomain.com`)"
+      - "traefik.http.routers.masldatlas-http.entrypoints=web"
+      - "traefik.http.routers.masldatlas-http.middlewares=masldatlas-redirect"
+      - "traefik.http.middlewares.masldatlas-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.masldatlas-redirect.redirectscheme.permanent=true"
+    
+    # Network configuration
+    networks:
+      - traefik-network
+      - masldatlas-internal
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=masldatlas"
+
+# Network definitions
+networks:
+  traefik-network:
+    external: true
+    name: traefik-network
+  masldatlas-internal:
+    driver: bridge
+    internal: true
+
+# Volume definitions
+volumes:
+  masldatlas_cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/docker/volumes/masldatlas_cache
+  masldatlas_logs:
+    driver: local

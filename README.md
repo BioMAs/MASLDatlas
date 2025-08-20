@@ -28,7 +28,7 @@ cd MASLDatlas
 
 2. Set up the Python virtual environment (this will be done automatically using the provided script):
 ```R
-source("reticulate_create_env.R")
+source("scripts/setup/reticulate_create_env.R")
 ```
 
 This script will:
@@ -131,18 +131,18 @@ For even easier deployment, use the provided scripts:
 
 **Start the application:**
 ```bash
-./start.sh          # Default port 3838
-./start.sh 8080     # Custom port 8080
+./scripts/deployment/start.sh          # Default port 3838
+./scripts/deployment/start.sh 8080     # Custom port 8080
 ```
 
 **Stop the application:**
 ```bash
-./stop.sh
+./scripts/deployment/stop.sh
 ```
 
 **Rebuild the Docker image (if packages are missing):**
 ```bash
-./rebuild.sh
+./scripts/deployment/rebuild.sh
 ```
 
 These scripts will automatically:
@@ -153,32 +153,93 @@ These scripts will automatically:
 
 ## Production Deployment
 
-For production environments, consider the following:
+For production environments with Traefik reverse proxy integration:
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Traefik running with `traefik-network` network
+- DNS pointing to your server
+- SSL certificates managed by Traefik (Let's Encrypt recommended)
+
+### Quick Production Deployment
+
+1. **Configure your domain:**
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit the domain configuration
+nano .env  # Set MASLDATLAS_DOMAIN=your-domain.com
+```
+
+2. **Deploy with the automated script:**
+```bash
+# Deploy with custom domain
+./scripts/deployment/deploy-prod.sh masld.yourdomain.com
+
+# Or deploy with default domain from .env
+./scripts/deployment/deploy-prod.sh
+```
+
+3. **Manual deployment (alternative):**
+```bash
+# Update domain in docker-compose.prod.yml
+sed -i 's/masldatlas\.yourdomain\.com/your-domain.com/g' docker-compose.prod.yml
+
+# Deploy the stack
+docker-compose -f docker-compose.prod.yml up -d
+```
 
 ### Resource Requirements
 - **RAM**: Minimum 4GB, recommended 8GB+
 - **CPU**: Multi-core recommended for multiple users
 - **Storage**: 10GB+ for application and datasets
+- **Network**: Reverse proxy (Traefik) handling SSL/TLS
 
-### Security Considerations
+### Traefik Integration Features
+- **Automatic SSL/TLS**: Let's Encrypt certificate management
+- **Load Balancing**: Multi-instance support
+- **Health Checks**: Automatic unhealthy instance removal
+- **Security Headers**: HSTS, XSS protection, content type validation
+- **Rate Limiting**: Protection against abuse (100 req/min average, 200 burst)
+- **HTTP to HTTPS Redirect**: Automatic secure connection enforcement
+
+### Security Features
+- **Non-root containers**: Enhanced security posture
+- **Resource limits**: CPU and memory constraints
+- **Security headers**: Comprehensive HTTP security headers
+- **Rate limiting**: Request throttling and abuse protection
+- **Internal networks**: Container isolation
+- **Health monitoring**: Automated failure detection
+
+### Monitoring and Management
 ```bash
-# Run container with limited privileges
-docker run -p 3838:3838 --user 1000:1000 masldatlas-app
+# View service status
+docker-compose -f docker-compose.prod.yml ps
 
-# Use read-only filesystem where possible
-docker run -p 3838:3838 --read-only --tmpfs /tmp masldatlas-app
-```
-
-### Monitoring
-```bash
 # Monitor resource usage
-docker stats masldatlas
+docker stats masldatlas-prod
 
 # View application logs
-docker logs -f masldatlas
+docker-compose -f docker-compose.prod.yml logs -f
 
 # Health check
-curl -f http://localhost:3838 || echo "Application not responding"
+curl -f https://your-domain.com || echo "Application not responding"
+
+# Update deployment
+./deploy-prod.sh your-domain.com
+```
+
+### Scaling for High Availability
+```yaml
+# In docker-compose.prod.yml, add multiple replicas
+deploy:
+  replicas: 3
+  update_config:
+    parallelism: 1
+    delay: 10s
+  restart_policy:
+    condition: on-failure
 ```
 
 ## Features
@@ -214,13 +275,187 @@ The application expects data in the following locations:
 
 ## Dataset Management
 
-The application uses a JSON configuration file (`datasets_config.json`) to manage available datasets. This allows adding new datasets without modifying the application code.
+### Overview
+
+The application uses an external dataset download system to handle large H5AD files that are too big for Git repositories. Datasets are automatically downloaded during Docker build or container startup.
+
+### Storage Options
+
+1. **Zenodo (Recommended for Academic Use)**
+   - Free hosting up to 50GB per record
+   - DOI assignment for permanent citation
+   - Version control and academic-friendly
+
+2. **GitHub Releases**
+   - Free with GitHub account
+   - 2GB per file limit
+   - Good for smaller datasets
+
+3. **Cloud Storage (AWS S3, Google Cloud, Azure)**
+   - Professional cloud storage
+   - Scalable and reliable
+   - Requires account setup
+
+4. **Custom HTTP Server**
+   - Your own server or institutional storage
+   - Full control over access and permissions
+
+### Configuration
+
+The application uses `datasets_sources.json` to configure dataset download sources:
+
+```json
+{
+  "datasets": {
+    "Human": {
+      "GSE136103": {
+        "url": "https://zenodo.org/record/XXXXXX/files/GSE136103.h5ad",
+        "sha256": "a1b2c3d4e5f6789...",
+        "size_mb": 450,
+        "description": "Human liver scRNA-seq dataset GSE136103"
+      }
+    }
+  },
+  "config": {
+    "download_timeout": 3600,
+    "retry_attempts": 3,
+    "verify_checksums": true,
+    "parallel_downloads": 2
+  }
+}
+```
+
+### Setup Instructions
+
+1. **Configure your storage provider:**
+```bash
+# For Zenodo
+./scripts/dataset-management/configure_datasets.sh setup-zenodo
+
+# For GitHub Releases
+./scripts/dataset-management/configure_datasets.sh setup-github yourusername/MASLDatlas
+
+# For AWS S3
+./scripts/dataset-management/configure_datasets.sh setup-s3
+
+# For custom server
+./scripts/dataset-management/configure_datasets.sh setup-custom
+```
+
+2. **Generate checksums for verification:**
+```bash
+./scripts/dataset-management/configure_datasets.sh generate-hashes
+```
+
+3. **Validate configuration:**
+```bash
+python3 scripts/testing/test_dataset_download.py
+```
+
+## Testing the Dataset System
+
+Before deploying the application, it's recommended to test the dataset download system:
+
+### Quick Connectivity Test
+```bash
+# Test dataset accessibility without downloading files
+python3 scripts/testing/test_dataset_download.py
+```
+
+This script will:
+- ✅ Validate configuration file format
+- ✅ Check URL accessibility for all datasets  
+- ✅ Verify checksum formats (MD5/SHA256)
+- ✅ Compare expected vs actual file sizes
+- ✅ Test Zenodo API connectivity
+
+### Complete Download Test
+```bash
+# Validation only (recommended first)
+python3 scripts/testing/test_complete_download.py --validation-only
+
+# Test with smallest dataset download (~392MB)
+python3 scripts/testing/test_complete_download.py --quick-test
+```
+
+### Advanced Testing
+```bash
+# Interactive test suite (recommended)
+./scripts/testing/test_datasets.sh
+
+# Production readiness test
+./scripts/testing/test_datasets.sh production
+
+# Include partial download tests (downloads 1KB samples)
+python3 scripts/testing/test_dataset_download.py --download-test
+
+# Update configuration with correct metadata from Zenodo
+python3 scripts/dataset-management/update_dataset_config.py
+
+# Show available test options
+python3 scripts/testing/test_dataset_download.py --help
+```
+
+### Expected Output for Successful Tests
+```
+🧪 Dataset Download Test Suite
+============================================================
+📊 Summary:
+   Total datasets: 4
+   Accessible datasets: 4
+   Success rate: 100.0%
+   Total data size: 11,962 MB (11.7 GB)
+
+🏁 Test Results:
+   ✅ All tests passed! Dataset download system is ready.
+```
+
+### Integration with Docker
+```bash
+# Test within Docker container
+docker run --rm masldatlas-app python3 scripts/testing/test_dataset_download.py
+
+# Test during build (automatic)
+docker build -t masldatlas-test .
+```
+
+For detailed testing documentation, see [Dataset Testing Guide](docs/dataset-testing-guide.md).
+
+### Manual Dataset Management
+
+**Download datasets manually:**
+```bash
+# Download all datasets
+python3 scripts/dataset-management/download_datasets.py download
+
+# Download specific species
+python3 scripts/dataset-management/download_datasets.py download --species Human Mouse
+
+# List configured datasets
+python3 scripts/dataset-management/download_datasets.py list
+
+# Clean downloaded datasets
+python3 scripts/dataset-management/download_datasets.py clean
+```
+
+**Docker environment variables:**
+```bash
+# Enable/disable automatic download
+AUTO_DOWNLOAD_DATASETS=true
+
+# Skip dataset checks
+SKIP_DATASET_CHECK=false
+```
+
+### Application Dataset Configuration
+
+The application uses a JSON configuration file (`datasets_config.json`) to manage available datasets for the UI. This is separate from the download configuration:
 
 ### Adding New Datasets
 
 1. **Using the R script (recommended):**
 ```R
-source("dataset_manager.R")
+source("scripts/dataset-management/dataset_manager.R")
 
 # Add a new dataset
 add_dataset("Human", "Individual Dataset", "GSE123456")
@@ -230,7 +465,7 @@ add_dataset("Mouse", "Datasets", "GSE789012")
 list_all_datasets()
 ```
 
-2. **Manual editing of datasets_config.json:**
+2. **Manual editing of config/datasets_config.json:**
 ```json
 {
   "Human": {
@@ -283,7 +518,7 @@ datasets/
 **Application loads but datasets are missing:**
 - Ensure datasets are in the correct directory structure
 - Check file permissions: `ls -la datasets/`
-- Verify `datasets_config.json` is properly formatted: `cat datasets_config.json | python -m json.tool`
+- Verify `config/datasets_config.json` is properly formatted: `cat config/datasets_config.json | python -m json.tool`
 
 **Performance issues:**
 - Increase Docker memory allocation (Docker Desktop > Preferences > Resources)
@@ -295,14 +530,14 @@ datasets/
 
 **Missing R packages error (e.g., "there is no package called 'dplyr'"):**
 - Rebuild the Docker image: `docker build --no-cache -t masldatlas-app .`
-- Ensure all R packages are listed in `environment.yml`
+- Ensure all R packages are listed in `config/environment.yml`
 - Check if the conda environment is properly activated in the container
 - Some packages (like `fenr`, `shinydisconnect`) are only available via CRAN and are installed separately in the Dockerfile
 
 **Package not found during conda build:**
 - Check if the package is available via conda: `conda search -c conda-forge -c r r-packagename`
 - If not available, add it to the CRAN installation section in the Dockerfile
-- Use the `check_conda_packages.sh` script to verify package availability
+- Use the `scripts/setup/check_conda_packages.sh` script to verify package availability
 
 **Locale warnings (LC_* settings failed):**
 - These warnings are usually harmless but if they cause issues, try:

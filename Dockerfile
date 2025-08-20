@@ -34,7 +34,7 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     update-locale LANG=en_US.UTF-8
 
 # Copy environment.yml and install conda env
-COPY environment.yml /tmp/environment.yml
+COPY config/environment.yml /tmp/environment.yml
 RUN conda env create -f /tmp/environment.yml && \
     conda clean -afy
 
@@ -43,12 +43,30 @@ SHELL ["conda", "run", "-n", "fibrosis_shiny", "/bin/bash", "-c"]
 ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 
 # Copy and run script to install optional R packages
-COPY install_optional_packages.R /tmp/install_optional_packages.R
+COPY scripts/setup/install_optional_packages.R /tmp/install_optional_packages.R
 RUN conda run -n $CONDA_ENV Rscript /tmp/install_optional_packages.R || echo "Optional packages installation completed with warnings"
+
+# Copy dataset management files
+COPY scripts/dataset-management/download_datasets.py /tmp/download_datasets.py
+COPY config/datasets_sources.json /tmp/datasets_sources.json
+
+# Install Python dependencies for dataset downloader and download datasets
+RUN conda run -n $CONDA_ENV pip install requests && \
+    cd /tmp && \
+    python download_datasets.py download --no-parallel || echo "Dataset download completed with warnings"
 
 # Copy app files
 WORKDIR /app
 COPY . /app
+
+# Move downloaded datasets to app directory (if any were downloaded)
+RUN if [ -d "/tmp/datasets" ]; then \
+        mkdir -p /app/datasets && \
+        cp -r /tmp/datasets/* /app/datasets/ || true; \
+    fi
+
+# Make startup script executable
+RUN chmod +x /app/scripts/deployment/startup.sh
 
 # Expose Shiny port
 EXPOSE 3838
@@ -57,5 +75,5 @@ EXPOSE 3838
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3838 || exit 1
 
-# Run the app using conda run to ensure proper environment
-CMD ["conda", "run", "-n", "fibrosis_shiny", "R", "-e", "shiny::runApp('/app', host='0.0.0.0', port=3838)"]
+# Use startup script that handles dataset download and app startup
+CMD ["conda", "run", "-n", "fibrosis_shiny", "/app/scripts/deployment/startup.sh"]

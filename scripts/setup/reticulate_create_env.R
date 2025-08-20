@@ -21,4 +21,3 @@ py_install("marsilea==0.4.0", pip = TRUE)
 py_install("pydeseq2")
 py_install("adjustText")
 py_install("psutil")
-

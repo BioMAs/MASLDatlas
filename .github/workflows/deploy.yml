@@ -1,0 +1,143 @@
+name: Build and Deploy MASLDatlas
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+
+    - name: Validate dataset configuration
+      run: |
+        if [ -f "config/datasets_sources.json" ]; then
+          python3 -m json.tool config/datasets_sources.json > /dev/null
+          echo "✅ Dataset configuration is valid"
+        else
+          echo "⚠️ No dataset configuration found, using local datasets only"
+        fi
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "🚀 Starting production deployment"
+        echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+        
+        # For now, just show what would be deployed
+        # In a real scenario, you would deploy to your server:
+        # 
+        # 1. SSH to production server
+        # 2. Pull the latest image
+        # 3. Update docker-compose with new image
+        # 4. Deploy with zero downtime
+        
+        echo "✅ Deployment configuration ready"
+        echo "Next steps: Configure deployment secrets and target server"
+
+  test-datasets:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install requests
+
+    - name: Test dataset configuration
+      run: |
+        if [ -f "config/datasets_sources.json" ]; then
+          echo "🧪 Testing dataset configuration..."
+          
+          # Validate JSON syntax
+          python3 -m json.tool config/datasets_sources.json > /dev/null
+          echo "✅ Dataset configuration JSON is valid"
+          
+          # Test download script
+          cd scripts/dataset-management
+          python3 download_datasets.py list || echo "⚠️ Dataset listing failed"
+          
+        else
+          echo "⚠️ No dataset configuration to test"
+        fi
+
+    - name: Validate Docker build
+      run: |
+        echo "🐳 Testing Docker build..."
+        docker build -t masldatlas-test .
+        
+        # Test container startup (without dataset download)
+        docker run -d --name test-container \
+          -e SKIP_DATASET_CHECK=true \
+          -p 3838:3838 \
+          masldatlas-test
+        
+        # Wait for startup
+        sleep 30
+        
+        # Test health check
+        curl -f http://localhost:3838 || exit 1
+        
+        # Cleanup
+        docker stop test-container
+        docker rm test-container
