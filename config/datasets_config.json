@@ -1,7 +1,6 @@
 {
   "Human": {
-    "Individual Dataset": [
-      "GSE136103",
+    "Datasets": [
       "GSE181483"
     ]
   },
@@ -17,7 +16,7 @@
   },
   "Integrated": {
     "Datasets": [
-      "Fibrotic Integrated Cross Species"
+      "Fibrotic Integrated Cross Species-002"
     ]
   }
 }
