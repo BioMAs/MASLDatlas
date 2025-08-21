@@ -1,6 +1,19 @@
 # 🌟 Configuration Environnement DEV_SCILICIUM
 
-Ce guide vous explique comment configurer l'environnement GitHub `DEV_SCILICIUM` pour le déploiement automatique de MASLDatlas.
+Ce guide vous explique comment configurer l'enviro```yaml
+# Dans GitHub Actions, les secrets apparaîtront comme :
+echo "Host: ${{ secrets.DEV_SERVER_HOST }}"         # → Host: ***
+echo "User: ${{ secrets.DEV_SERVER_USER }}"         # → User: ***
+echo "Password: ${{ secrets.DEV_SERVER_PASSWORD }}" # → Password: ***
+```
+
+### 2. Test de Connexion
+Le workflow testera automatiquement :
+```bash
+# Test SSH avec mot de passe dans le workflow  
+sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+  ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'echo "Connection successful"'
+``` `DEV_SCILICIUM` pour le déploiement automatique de MASLDatlas.
 
 ## 🎯 Pourquoi un Environnement GitHub ?
 
@@ -44,38 +57,22 @@ Dans la page de configuration de `DEV_SCILICIUM` :
 
 ### 3. 🔑 Configuration des Secrets
 
-Dans la section **Environment secrets** :
+Dans la section **Environment secrets** de `DEV_SCILICIUM`, ajoutez :
 
-#### Secret 1: DEV_SERVER_SSH_KEY
-```bash
-# Nom du secret
-DEV_SERVER_SSH_KEY
+#### 🌐 DEV_SERVER_HOST
+- **Nom** : `DEV_SERVER_HOST`
+- **Valeur** : L'adresse IP ou nom de domaine de votre serveur de développement
+- **Exemple** : `192.168.1.100` ou `dev.scilicium.fr`
 
-# Valeur (clé SSH privée générée par le script)
-# Exécutez sur votre serveur :
-sudo cat /home/tdarde/.ssh/github_actions
-```
+#### 👤 DEV_SERVER_USER  
+- **Nom** : `DEV_SERVER_USER`
+- **Valeur** : Le nom d'utilisateur pour la connexion SSH
+- **Exemple** : `tdarde` (pour l'utilisateur qui a accès à `/home/dev/masldatlas/`)
 
-#### Secret 2: DEV_SERVER_HOST
-```bash
-# Nom du secret
-DEV_SERVER_HOST
-
-# Valeur (IP ou domaine de votre serveur)
-# Exemples :
-192.168.1.100          # IP locale
-dev.scilicium.fr       # Domaine
-scilicium-dev.com      # Sous-domaine
-```
-
-#### Secret 3: DEV_SERVER_USER
-```bash
-# Nom du secret
-DEV_SERVER_USER
-
-# Valeur
-tdarde
-```
+#### 🔐 DEV_SERVER_PASSWORD
+- **Nom** : `DEV_SERVER_PASSWORD`
+- **Valeur** : Le mot de passe du compte utilisateur
+- **Sécurité** : Utilisez un mot de passe fort et unique pour le déploiement
 
 ## 🚀 Configuration Complète
 
@@ -90,9 +87,9 @@ Protection Rules:
   ☐ Wait timer: 0 minutes
 
 Environment Secrets:
-  🔑 DEV_SERVER_SSH_KEY: -----BEGIN OPENSSH PRIVATE KEY-----...
   🌐 DEV_SERVER_HOST: 192.168.1.100
-  👤 DEV_SERVER_USER: tdarde
+  👤 DEV_SERVER_USER: tdarde  
+  🔐 DEV_SERVER_PASSWORD: ******************
 ```
 
 ### Workflow Configuration

@@ -26,34 +26,25 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup SSH key
+    - name: Setup SSH connection with password
       run: |
-        echo "🔧 Setting up SSH connection..."
+        echo "🔧 Setting up SSH connection with password authentication..."
         
-        # Create SSH directory
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
+        # Install sshpass for password authentication
+        sudo apt-get update && sudo apt-get install -y sshpass
         
-        # Create SSH key file from secret
-        echo "${{ secrets.DEV_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
+        # Test SSH connection
+        echo "🧪 Testing SSH connection..."
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'echo "SSH connection successful"'
         
-        # Validate SSH key format
-        if ! ssh-keygen -l -f ~/.ssh/deploy_key >/dev/null 2>&1; then
-          echo "❌ Invalid SSH key format in DEV_SERVER_SSH_KEY secret"
-          echo "Expected format: OpenSSH private key (-----BEGIN OPENSSH PRIVATE KEY-----)"
-          exit 1
-        fi
-        
-        # Add to SSH agent
-        eval $(ssh-agent -s)
-        ssh-add ~/.ssh/deploy_key
-        
-        echo "✅ SSH key loaded successfully"
+        echo "✅ SSH connection established successfully"
 
     - name: Add server to known hosts
       run: |
-        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
+        # Add server to known hosts (optional with password auth)
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
     - name: Prepare deployment script
       run: |
@@ -112,7 +103,8 @@ jobs:
 
     - name: Deploy to development server
       run: |
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'bash -s' < deploy-script.sh
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'bash -s' < deploy-script.sh
 
     - name: Copy project files
       run: |
@@ -127,10 +119,12 @@ jobs:
             -czf masldatlas-deploy.tar.gz .
             
         # Transfer files
-        scp masldatlas-deploy.tar.gz ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }}:${{ env.DEV_SERVER_PATH }}/
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" scp -o StrictHostKeyChecking=no \
+          masldatlas-deploy.tar.gz ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }}:${{ env.DEV_SERVER_PATH }}/
         
         # Extract on server
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
           cd ${{ env.DEV_SERVER_PATH }}
           
           echo "📦 Extracting project files..."
@@ -147,7 +141,8 @@ jobs:
 
     - name: Setup datasets and volumes
       run: |
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
           cd ${{ env.DEV_SERVER_PATH }}
           
           echo "📊 Setting up datasets..."
@@ -174,7 +169,8 @@ jobs:
 
     - name: Build and start application
       run: |
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
           cd ${{ env.DEV_SERVER_PATH }}
           
           echo "🐳 Building Docker image..."
@@ -222,7 +218,8 @@ jobs:
         rm -f masldatlas-deploy.tar.gz deploy-script.sh
         
         # Send deployment notification
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
           cd ${{ env.DEV_SERVER_PATH }}
           
           echo "📝 Deployment Summary:"
@@ -260,31 +257,25 @@ jobs:
     if: success()
     
     steps:
-    - name: Setup SSH key
+    - name: Setup SSH connection with password
       run: |
         echo "🔧 Setting up SSH connection for cleanup..."
         
-        # Create SSH directory
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
+        # Install sshpass for password authentication
+        sudo apt-get update && sudo apt-get install -y sshpass
         
-        # Create SSH key file from secret
-        echo "${{ secrets.DEV_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        
-        # Add to SSH agent
-        eval $(ssh-agent -s)
-        ssh-add ~/.ssh/deploy_key
-        
-        echo "✅ SSH key loaded successfully"
+        echo "✅ SSH tools ready for cleanup"
 
     - name: Add server to known hosts
       run: |
-        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
+        # Add server to known hosts (optional with password auth)
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
     - name: Cleanup old backups
       run: |
-        ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
           echo "🧹 Cleaning up old backups..."
           
           # Keep only the 5 most recent backups
