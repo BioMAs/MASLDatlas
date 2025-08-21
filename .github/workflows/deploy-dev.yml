@@ -1,4 +1,4 @@
-name: Deploy to Development Server
+name: Deploy MASLDatlas to Development Server
 
 on:
   push:
@@ -20,132 +20,63 @@ jobs:
     name: Deploy to Development Server
     runs-on: ubuntu-latest
     environment: "DEV_SCILICIUM"
+    timeout-minutes: 30
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup SSH connection with password
-      run: |
-        echo "🔧 Setting up SSH connection with password authentication..."
-        
-        # Install sshpass for password authentication
-        sudo apt-get update && sudo apt-get install -y sshpass
-        
-        # Test SSH connection
-        echo "🧪 Testing SSH connection..."
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'echo "SSH connection successful"'
-        
-        echo "✅ SSH connection established successfully"
+    - name: Transfer source code to Server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.DEV_SERVER_HOST }}
+        username: ${{ secrets.DEV_SERVER_USER }}
+        key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+        source: "."
+        target: "${{ env.DEV_SERVER_PATH }}"
+        overwrite: true
+        tar_tmp_path: "/tmp"
+        rm: false
 
-    - name: Add server to known hosts
-      run: |
-        # Add server to known hosts (optional with password auth)
-        mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-
-    - name: Prepare deployment script
-      run: |
-        cat > deploy-script.sh << 'EOF'
-        #!/bin/bash
-        set -e
-        
-        echo "🚀 Starting MASLDatlas deployment on development server..."
-        
-        # Colors for output
-        GREEN='\033[0;32m'
-        YELLOW='\033[1;33m'
-        RED='\033[0;31m'
-        NC='\033[0m' # No Color
-        
-        log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-        log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-        log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-        
-        # Configuration
-        PROJECT_DIR="${DEV_SERVER_PATH}"
-        BACKUP_DIR="${PROJECT_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
-        FORCE_REBUILD="${{ inputs.force_rebuild }}"
-        
-        log_info "📁 Target directory: $PROJECT_DIR"
-        log_info "💾 Backup directory: $BACKUP_DIR"
-        
-        # Create backup if directory exists
-        if [ -d "$PROJECT_DIR" ]; then
-          log_info "📦 Creating backup..."
-          cp -r "$PROJECT_DIR" "$BACKUP_DIR"
-          log_info "✅ Backup created at $BACKUP_DIR"
-        fi
-        
-        # Create or update project directory
-        mkdir -p "$PROJECT_DIR"
-        cd "$PROJECT_DIR"
-        
-        # Stop existing containers
-        log_info "🛑 Stopping existing containers..."
-        docker-compose down || true
-        docker stop ${CONTAINER_NAME} 2>/dev/null || true
-        docker rm ${CONTAINER_NAME} 2>/dev/null || true
-        
-        # Clean up old images if force rebuild
-        if [ "$FORCE_REBUILD" = "true" ]; then
-          log_warn "🧹 Force rebuild requested - cleaning Docker images..."
-          docker rmi masldatlas-app:latest 2>/dev/null || true
-          docker system prune -f
-        fi
-        
-        log_info "✅ Container cleanup completed"
-        EOF
-        
-        chmod +x deploy-script.sh
-
-    - name: Deploy to development server
-      run: |
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'bash -s' < deploy-script.sh
-
-    - name: Copy project files
-      run: |
-        # Create temporary tarball excluding datasets and large files
-        tar --exclude='datasets' \
-            --exclude='*.h5ad' \
-            --exclude='app_cache' \
-            --exclude='tmp' \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='*.log' \
-            -czf masldatlas-deploy.tar.gz .
-            
-        # Transfer files
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" scp -o StrictHostKeyChecking=no \
-          masldatlas-deploy.tar.gz ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }}:${{ env.DEV_SERVER_PATH }}/
-        
-        # Extract on server
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+    - name: Setup datasets and deploy application
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEV_SERVER_HOST }}
+        username: ${{ secrets.DEV_SERVER_USER }}
+        key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+        script: |
           cd ${{ env.DEV_SERVER_PATH }}
           
-          echo "📦 Extracting project files..."
-          tar -xzf masldatlas-deploy.tar.gz
-          rm masldatlas-deploy.tar.gz
+          echo "🚀 Starting MASLDatlas deployment..."
+          
+          # Create backup if directory exists
+          if [ -d "${{ env.DEV_SERVER_PATH }}_old" ]; then
+            echo "📦 Creating backup..."
+            BACKUP_DIR="${{ env.DEV_SERVER_PATH }}_backup_$(date +%Y%m%d_%H%M%S)"
+            cp -r "${{ env.DEV_SERVER_PATH }}" "$BACKUP_DIR"
+            echo "✅ Backup created at $BACKUP_DIR"
+          fi
+          
+          # Stop existing containers
+          echo "� Stopping existing containers..."
+          docker-compose down || true
+          docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+          docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+          
+          # Clean up old images if force rebuild
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            echo "🧹 Force rebuild requested - cleaning Docker images..."
+            docker rmi masldatlas-app:latest 2>/dev/null || true
+            docker system prune -f
+          fi
           
           echo "🔧 Setting permissions..."
-          chmod +x scripts/dataset-management/*.sh
-          chmod +x scripts/deployment/*.sh
-          chmod +x scripts/setup/*.sh
+          chmod +x scripts/dataset-management/*.sh 2>/dev/null || true
+          chmod +x scripts/deployment/*.sh 2>/dev/null || true
+          chmod +x scripts/setup/*.sh 2>/dev/null || true
           
-          echo "✅ Files deployed successfully"
-        EOF
-
-    - name: Setup datasets and volumes
-      run: |
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
-          cd ${{ env.DEV_SERVER_PATH }}
-          
-          echo "📊 Setting up datasets..."
+          echo "�📊 Setting up datasets..."
           
           # Create necessary directories
           mkdir -p datasets/{Human,Mouse,Zebrafish,Integrated}
@@ -154,30 +85,22 @@ jobs:
           mkdir -p logs
           
           # Check if datasets need to be downloaded
-          DATASET_COUNT=$(find datasets -name "*.h5ad" | wc -l)
+          DATASET_COUNT=$(find datasets -name "*.h5ad" 2>/dev/null | wc -l)
           
           if [ "$DATASET_COUNT" -lt 4 ] || [ "${{ inputs.force_rebuild }}" = "true" ]; then
             echo "⬇️ Downloading datasets..."
-            ./scripts/dataset-management/manage_volume.sh download
+            if [ -f "./scripts/dataset-management/manage_volume.sh" ]; then
+              ./scripts/dataset-management/manage_volume.sh download
+            else
+              echo "⚠️ Dataset management script not found, skipping download"
+            fi
           else
             echo "✅ Datasets already present ($DATASET_COUNT files found)"
           fi
           
-          # Verify dataset status
-          ./scripts/dataset-management/manage_volume.sh status
-        EOF
-
-    - name: Build and start application
-      run: |
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
-          cd ${{ env.DEV_SERVER_PATH }}
-          
-          echo "🐳 Building Docker image..."
-          docker-compose build masldatlas
-          
-          echo "🚀 Starting MASLDatlas application..."
-          docker-compose up -d masldatlas
+          echo "🐳 Building and starting Docker containers..."
+          docker-compose down || true
+          docker-compose up -d --build --force-recreate
           
           echo "⏳ Waiting for application startup..."
           sleep 30
@@ -200,27 +123,15 @@ jobs:
           
           if [ $attempt -gt $max_attempts ]; then
             echo "❌ Health check failed - checking logs..."
-            docker logs ${CONTAINER_NAME} --tail 50
+            docker logs ${{ env.CONTAINER_NAME }} --tail 50 || docker-compose logs --tail 50
             exit 1
           fi
           
           echo "📊 Deployment Status:"
-          docker ps | grep masldatlas
+          docker ps | grep masldatlas || docker-compose ps
           
           echo "🎉 Deployment completed successfully!"
           echo "🌐 Application accessible at: http://$(hostname -I | awk '{print $1}'):3838"
-        EOF
-
-    - name: Cleanup and notification
-      if: always()
-      run: |
-        # Cleanup local files
-        rm -f masldatlas-deploy.tar.gz deploy-script.sh
-        
-        # Send deployment notification
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
-          cd ${{ env.DEV_SERVER_PATH }}
           
           echo "📝 Deployment Summary:"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -229,24 +140,7 @@ jobs:
           echo "🌿 Branch: ${{ github.ref_name }}"
           echo "📝 Commit: ${{ github.sha }}"
           echo "👤 Author: ${{ github.actor }}"
-          
-          # Container status
-          echo ""
-          echo "🐳 Container Status:"
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep masldatlas || echo "No containers running"
-          
-          # Dataset status
-          echo ""
-          echo "📊 Dataset Status:"
-          ./scripts/dataset-management/manage_volume.sh status | grep -E "(Dataset files|Directory size)"
-          
-          # Disk usage
-          echo ""
-          echo "💾 Disk Usage:"
-          du -sh ${{ env.DEV_SERVER_PATH }}
-          
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        EOF
 
   # Job pour nettoyer les anciens déploiements
   cleanup-old-deployments:
@@ -257,32 +151,22 @@ jobs:
     if: success()
     
     steps:
-    - name: Setup SSH connection with password
-      run: |
-        echo "🔧 Setting up SSH connection for cleanup..."
-        
-        # Install sshpass for password authentication
-        sudo apt-get update && sudo apt-get install -y sshpass
-        
-        echo "✅ SSH tools ready for cleanup"
-
-    - name: Add server to known hosts
-      run: |
-        # Add server to known hosts (optional with password auth)
-        mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-
-    - name: Cleanup old backups
-      run: |
-        sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} << 'EOF'
+    - name: Cleanup old backups and Docker resources
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEV_SERVER_HOST }}
+        username: ${{ secrets.DEV_SERVER_USER }}
+        key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+        script: |
           echo "🧹 Cleaning up old backups..."
           
           # Keep only the 5 most recent backups
-          ls -dt /home/dev/masldatlas_backup_* 2>/dev/null | tail -n +6 | xargs rm -rf
+          ls -dt /home/dev/masldatlas_backup_* 2>/dev/null | tail -n +6 | xargs rm -rf || true
           
           echo "🐳 Cleaning up unused Docker resources..."
           docker system prune -f --filter "until=24h"
           
+          echo "💾 Current disk usage:"
+          du -sh ${{ env.DEV_SERVER_PATH }}
+          
           echo "✅ Cleanup completed"
-        EOF

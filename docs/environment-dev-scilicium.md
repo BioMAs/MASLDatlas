@@ -4,15 +4,14 @@ Ce guide vous explique comment configurer l'enviro```yaml
 # Dans GitHub Actions, les secrets apparaîtront comme :
 echo "Host: ${{ secrets.DEV_SERVER_HOST }}"         # → Host: ***
 echo "User: ${{ secrets.DEV_SERVER_USER }}"         # → User: ***
-echo "Password: ${{ secrets.DEV_SERVER_PASSWORD }}" # → Password: ***
+echo "SSH Key: ${{ secrets.DEV_SERVER_SSH_KEY }}"   # → SSH Key: ***
 ```
 
 ### 2. Test de Connexion
-Le workflow testera automatiquement :
+Le workflow utilisera automatiquement les actions `appleboy/scp-action` et `appleboy/ssh-action` :
 ```bash
-# Test SSH avec mot de passe dans le workflow  
-sshpass -p "${{ secrets.DEV_SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-  ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} 'echo "Connection successful"'
+# Actions GitHub automatiques - pas besoin de test manuel
+# Les actions gèrent l'authentification SSH automatiquement
 ``` `DEV_SCILICIUM` pour le déploiement automatique de MASLDatlas.
 
 ## 🎯 Pourquoi un Environnement GitHub ?
@@ -69,10 +68,11 @@ Dans la section **Environment secrets** de `DEV_SCILICIUM`, ajoutez :
 - **Valeur** : Le nom d'utilisateur pour la connexion SSH
 - **Exemple** : `tdarde` (pour l'utilisateur qui a accès à `/home/dev/masldatlas/`)
 
-#### 🔐 DEV_SERVER_PASSWORD
-- **Nom** : `DEV_SERVER_PASSWORD`
-- **Valeur** : Le mot de passe du compte utilisateur
-- **Sécurité** : Utilisez un mot de passe fort et unique pour le déploiement
+#### 🔐 DEV_SERVER_SSH_KEY
+- **Nom** : `DEV_SERVER_SSH_KEY`
+- **Valeur** : La clé SSH privée pour la connexion automatique
+- **Format** : Clé privée RSA ou ED25519 complète (incluant `-----BEGIN` et `-----END`)
+- **Génération** : Utilisez le script `./scripts/setup/generate-ssh-key-github.sh`
 
 ## 🚀 Configuration Complète
 
@@ -88,6 +88,8 @@ Protection Rules:
 
 Environment Secrets:
   🌐 DEV_SERVER_HOST: 192.168.1.100
+  👤 DEV_SERVER_USER: tdarde
+  🔐 DEV_SERVER_SSH_KEY: -----BEGIN OPENSSH PRIVATE KEY-----...
   👤 DEV_SERVER_USER: tdarde  
   🔐 DEV_SERVER_PASSWORD: ******************
 ```
