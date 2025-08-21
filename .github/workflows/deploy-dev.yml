@@ -27,9 +27,29 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup SSH key
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+      run: |
+        echo "🔧 Setting up SSH connection..."
+        
+        # Create SSH directory
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        
+        # Create SSH key file from secret
+        echo "${{ secrets.DEV_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        
+        # Validate SSH key format
+        if ! ssh-keygen -l -f ~/.ssh/deploy_key >/dev/null 2>&1; then
+          echo "❌ Invalid SSH key format in DEV_SERVER_SSH_KEY secret"
+          echo "Expected format: OpenSSH private key (-----BEGIN OPENSSH PRIVATE KEY-----)"
+          exit 1
+        fi
+        
+        # Add to SSH agent
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/deploy_key
+        
+        echo "✅ SSH key loaded successfully"
 
     - name: Add server to known hosts
       run: |
@@ -241,9 +261,22 @@ jobs:
     
     steps:
     - name: Setup SSH key
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+      run: |
+        echo "🔧 Setting up SSH connection for cleanup..."
+        
+        # Create SSH directory
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        
+        # Create SSH key file from secret
+        echo "${{ secrets.DEV_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        
+        # Add to SSH agent
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/deploy_key
+        
+        echo "✅ SSH key loaded successfully"
 
     - name: Add server to known hosts
       run: |
