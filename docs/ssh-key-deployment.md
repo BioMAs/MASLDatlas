@@ -174,6 +174,100 @@ Le workflow génère automatiquement un rapport de déploiement incluant :
 
 ## 🔍 Résolution de Problèmes
 
+### ❌ Erreur : "ssh: no key found" / "ssh: handshake failed"
+
+**Symptômes** :
+```
+2025/08/21 09:23:38 ssh.ParsePrivateKey: ssh: no key found
+error copy file to dest: ***, error message: ssh: handshake failed: ssh: unable to authenticate
+```
+
+**Causes et Solutions** :
+
+#### 1. 🔧 Format de Clé SSH Incorrect
+
+**Problème** : La clé SSH dans le secret GitHub n'est pas au bon format.
+
+**Solution** :
+```bash
+# 1. Générez une nouvelle clé SSH
+./scripts/setup/generate-ssh-key-github.sh
+
+# 2. Copiez EXACTEMENT la clé privée complète (avec les retours à la ligne)
+cat ~/.ssh/github_actions_masldatlas
+
+# 3. Dans GitHub : Settings → Environments → DEV_SCILICIUM → DEV_SERVER_SSH_KEY
+# Collez la clé COMPLÈTE incluant :
+# -----BEGIN OPENSSH PRIVATE KEY-----
+# [contenu de la clé]
+# -----END OPENSSH PRIVATE KEY-----
+```
+
+#### 2. 🔑 Clé Publique Non Ajoutée au Serveur
+
+**Problème** : La clé publique correspondante n'est pas sur le serveur.
+
+**Solution** :
+```bash
+# Sur votre serveur de développement
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# Ajoutez la clé publique (générée par le script)
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... github-actions-masldatlas-tdarde" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# Vérifiez les permissions
+ls -la ~/.ssh/
+```
+
+#### 3. 🚫 Configuration SSH Serveur Restrictive
+
+**Problème** : Le serveur refuse l'authentification par clé.
+
+**Solution** :
+```bash
+# Sur le serveur, vérifiez /etc/ssh/sshd_config
+sudo nano /etc/ssh/sshd_config
+
+# Assurez-vous que ces lignes sont présentes et activées :
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no  # (optionnel, pour sécurité)
+
+# Redémarrez SSH
+sudo systemctl restart sshd
+```
+
+#### 4. 🔐 Test Manuel de la Clé
+
+**Vérification complète** :
+```bash
+# 1. Test local de la clé
+ssh-keygen -l -f ~/.ssh/github_actions_masldatlas
+# Doit afficher : 256 SHA256:... github-actions-masldatlas-user (ED25519)
+
+# 2. Test de connexion manuelle
+ssh -i ~/.ssh/github_actions_masldatlas -o StrictHostKeyChecking=no tdarde@VOTRE_IP
+
+# 3. Debug verbose si échec
+ssh -vvv -i ~/.ssh/github_actions_masldatlas tdarde@VOTRE_IP
+```
+
+#### 5. 🔄 Alternative : Regénération Complète
+
+Si le problème persiste :
+```bash
+# 1. Supprimez l'ancienne clé
+rm -f ~/.ssh/github_actions_masldatlas*
+
+# 2. Regénérez
+./scripts/setup/generate-ssh-key-github.sh
+
+# 3. Reconfigurez les secrets GitHub
+# 4. Réajoutez la clé publique au serveur
+```
+
 ### Échec de Connexion SSH
 ```bash
 # Vérifier la clé SSH
