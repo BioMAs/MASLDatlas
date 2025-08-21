@@ -20,7 +20,7 @@ log_success() { echo -e "${GREEN}[✅]${NC} $1"; }
 log_fail() { echo -e "${RED}[❌]${NC} $1"; }
 
 # Configuration
-DEV_USER="dev"
+DEV_USER="tdarde"
 PROJECT_DIR="/home/dev/masldatlas"
 ERRORS=0
 WARNINGS=0
