@@ -175,10 +175,12 @@ cd MASLDatlas
 
 #### Configuration
 1. **Server Setup**: Run `./scripts/setup/setup-dev-server.sh`
-2. **GitHub Secrets**: Configure SSH keys and server details
+2. **GitHub Environment**: Create `DEV_SCILICIUM` environment with SSH secrets
 3. **Deploy**: Push code to trigger automatic deployment
 
 📚 **Complete Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+🔧 **Environment Setup**: See [docs/environment-dev-scilicium.md](docs/environment-dev-scilicium.md) for DEV_SCILICIUM configuration.
 
 🔧 **Troubleshooting**: See [docs/github-actions-setup.md](docs/github-actions-setup.md) for configuration help.
 

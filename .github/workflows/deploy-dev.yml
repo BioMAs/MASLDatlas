@@ -19,6 +19,7 @@ jobs:
   deploy-dev:
     name: Deploy to Development Server
     runs-on: ubuntu-latest
+    environment: "DEV_SCILICIUM"
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     
     steps:
@@ -234,6 +235,7 @@ jobs:
   cleanup-old-deployments:
     name: Cleanup Old Deployments
     runs-on: ubuntu-latest
+    environment: "DEV_SCILICIUM"
     needs: deploy-dev
     if: success()
     

@@ -31,13 +31,15 @@ cd MASLDatlas
 
 ### 2. 🔑 Configuration GitHub Secrets
 
-Allez dans **Settings** → **Secrets and variables** → **Actions** de votre repository et ajoutez :
+Allez dans **Settings** → **Environments** → **New environment** et créez l'environnement `DEV_SCILICIUM`, puis ajoutez :
 
 | Secret | Description | Exemple |
 |--------|-------------|---------|
 | `DEV_SERVER_SSH_KEY` | Clé SSH privée | Générée par le script de setup |
 | `DEV_SERVER_HOST` | IP/Domaine du serveur | `192.168.1.100` |
-| `DEV_SERVER_USER` | Utilisateur SSH | `dev` |
+| `DEV_SERVER_USER` | Utilisateur SSH | `tdarde` |
+
+📚 **Guide détaillé** : [docs/environment-dev-scilicium.md](docs/environment-dev-scilicium.md)
 
 ### 3. 🚀 Premier Déploiement
 
@@ -68,6 +70,8 @@ Le déploiement se lance automatiquement ! 🎉
 ├── scripts/                       # Scripts de gestion
 └── logs/                          # Logs d'application
 ```
+
+> **Note** : Le déploiement utilise l'environnement GitHub `DEV_SCILICIUM` pour une sécurité renforcée.
 
 ## 🔄 Workflows Disponibles
 

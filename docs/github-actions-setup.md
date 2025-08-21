@@ -2,27 +2,39 @@
 
 ## 🔧 Configuration des Secrets GitHub
 
-Pour activer le déploiement automatique sur votre serveur de développement, vous devez configurer les secrets suivants dans votre repository GitHub :
+Pour activer le déploiement automatique sur votre serveur de développement, vous devez configurer l'environnement `DEV_SCILICIUM` et ses secrets dans votre repository GitHub :
 
-### Étape 1 : Accéder aux Settings GitHub
+### Étape 1 : Créer l'Environnement GitHub
 1. Allez dans votre repository GitHub : `https://github.com/BioMAs/MASLDatlas`
 2. Cliquez sur **Settings** (en haut à droite)
-3. Dans le menu de gauche, cliquez sur **Secrets and variables** → **Actions**
+3. Dans le menu de gauche, cliquez sur **Environments**
+4. Cliquez sur **New environment**
+5. Nommez l'environnement : `DEV_SCILICIUM`
+6. Cliquez sur **Configure environment**
 
-### Étape 2 : Ajouter les Secrets Requis
+### Étape 2 : Configurer l'Environnement (Optionnel)
+Dans la configuration de l'environnement `DEV_SCILICIUM`, vous pouvez :
+- **Protection rules** : Restreindre les déploiements à certaines branches
+- **Required reviewers** : Demander une approbation avant déploiement
+- **Wait timer** : Ajouter un délai avant déploiement
 
-Cliquez sur **New repository secret** et ajoutez chacun de ces secrets :
+### Étape 3 : Ajouter les Secrets à l'Environnement
+
+Dans la section **Environment secrets** de `DEV_SCILICIUM`, ajoutez :
 
 #### 🔑 DEV_SERVER_SSH_KEY
 - **Nom** : `DEV_SERVER_SSH_KEY`
 - **Valeur** : Votre clé SSH privée pour accéder au serveur de développement
 - **Comment l'obtenir** :
   ```bash
-  # Sur votre machine locale, générez une clé SSH (si vous n'en avez pas)
+  # Sur votre serveur, après avoir exécuté setup-dev-server.sh
+  sudo cat /home/tdarde/.ssh/github_actions
+  
+  # Ou si vous générez une nouvelle clé sur votre machine locale
   ssh-keygen -t ed25519 -C "github-actions-masldatlas"
   
   # Copiez la clé publique sur votre serveur de dev
-  ssh-copy-id dev@votre-serveur-dev.com
+  ssh-copy-id tdarde@votre-serveur-dev.com
   
   # Copiez le contenu de la clé privée pour GitHub
   cat ~/.ssh/id_ed25519
@@ -36,7 +48,7 @@ Cliquez sur **New repository secret** et ajoutez chacun de ces secrets :
 #### 👤 DEV_SERVER_USER
 - **Nom** : `DEV_SERVER_USER`
 - **Valeur** : Le nom d'utilisateur pour la connexion SSH
-- **Exemple** : `dev` (pour l'utilisateur qui a accès à `/home/dev/masldatlas/`)
+- **Exemple** : `tdarde` (pour l'utilisateur qui a accès à `/home/dev/masldatlas/`)
 
 ## 📋 Prérequis sur le Serveur de Développement
 
