@@ -16,8 +16,11 @@ from urllib.parse import urlparse
 import argparse
 
 class DatasetDownloader:
-    def __init__(self, config_file="datasets_sources.json", datasets_dir="datasets"):
+    def __init__(self, config_file="datasets_sources.json", datasets_dir=None):
         self.config_file = config_file
+        # Use environment variable if set, otherwise use provided datasets_dir or default
+        if datasets_dir is None:
+            datasets_dir = os.environ.get('DATASETS_DIR', 'datasets')
         self.datasets_dir = Path(datasets_dir)
         self.config = self.load_config()
         

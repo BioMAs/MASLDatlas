@@ -46,24 +46,19 @@ ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 COPY scripts/setup/install_optional_packages.R /tmp/install_optional_packages.R
 RUN conda run -n $CONDA_ENV Rscript /tmp/install_optional_packages.R || echo "Optional packages installation completed with warnings"
 
-# Copy dataset management files
-COPY scripts/dataset-management/download_datasets.py /tmp/download_datasets.py
-COPY config/datasets_sources.json /tmp/datasets_sources.json
+# Copy dataset management files (for runtime use, not build time)
+COPY scripts/dataset-management/download_datasets.py /app/scripts/dataset-management/download_datasets.py
+COPY config/datasets_sources.json /app/config/datasets_sources.json
 
-# Install Python dependencies for dataset downloader and download datasets
-RUN conda run -n $CONDA_ENV pip install requests && \
-    cd /tmp && \
-    python download_datasets.py download --no-parallel || echo "Dataset download completed with warnings"
+# Install Python dependencies for dataset downloader (datasets will be downloaded at runtime)
+RUN conda run -n $CONDA_ENV pip install requests
 
 # Copy app files
 WORKDIR /app
 COPY . /app
 
-# Move downloaded datasets to app directory (if any were downloaded)
-RUN if [ -d "/tmp/datasets" ]; then \
-        mkdir -p /app/datasets && \
-        cp -r /tmp/datasets/* /app/datasets/ || true; \
-    fi
+# Create datasets directory for volume mount
+RUN mkdir -p /app/datasets
 
 # Make startup script executable
 RUN chmod +x /app/scripts/deployment/startup.sh

@@ -42,12 +42,17 @@ ehthumbs.db
 Thumbs.db
 
 # Large files that should be mounted as volumes
-# datasets/
-# enrichment_sets/
+datasets/
+# enrichment_sets/  (keep this for now as it contains smaller reference files)
 
-# Scripts (keep these as they might be useful in container)
-# start.sh
-# stop.sh
+# Temporary files
+tmp/
+*.tmp
+*.rds
+
+# Backup files
+backup_*/
+new_structure_backup_*/
 
 # Docker files
 Dockerfile*

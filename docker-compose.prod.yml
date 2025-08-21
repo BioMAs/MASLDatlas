@@ -34,7 +34,8 @@ services:
     volumes:
       - ./datasets:/app/datasets:ro
       - ./enrichment_sets:/app/enrichment_sets:ro
-      - ./datasets_config.json:/app/datasets_config.json:ro
+      - ./config/datasets_config.json:/app/config/datasets_config.json:ro
+      - ./config/datasets_sources.json:/app/config/datasets_sources.json:ro
       - masldatlas_cache:/app/app_cache
       - masldatlas_logs:/app/logs
     
@@ -59,7 +60,7 @@ services:
       - "traefik.enable=true"
       
       # Router configuration
-      - "traefik.http.routers.masldatlas.rule=Host(`masldatlas.yourdomain.com`)"
+      - "traefik.http.routers.masldatlas.rule=Host(`masldatlas.scilicium.com`)"
       - "traefik.http.routers.masldatlas.entrypoints=websecure"
       - "traefik.http.routers.masldatlas.tls=true"
       - "traefik.http.routers.masldatlas.tls.certresolver=letsencrypt"

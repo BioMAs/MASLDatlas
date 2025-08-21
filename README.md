@@ -63,66 +63,70 @@ The application will be available in your default web browser.
 
 #### Building and Running with Docker
 
-1. **Build the Docker image:**
+1. **Prepare datasets volume:**
+```bash
+# Check volume status and download datasets
+./scripts/dataset-management/manage_volume.sh status
+./scripts/dataset-management/manage_volume.sh download
+```
+
+2. **Build the Docker image:**
 ```bash
 docker build -t masldatlas-app .
 ```
 
-2. **Run the container:**
+3. **Run with Docker Compose (Recommended):**
 ```bash
-docker run -p 3838:3838 masldatlas-app
+# Development mode with volume mounting
+docker-compose up -d
+
+# Access the application at http://localhost:3838
 ```
 
-3. **Access the application:**
-Open your web browser and navigate to: `http://localhost:3838`
+**Alternative - Run container directly:**
+```bash
+# Run with volume mounts
+docker run -d \
+  -p 3838:3838 \
+  -v $(pwd)/datasets:/app/datasets:ro \
+  -v $(pwd)/config:/app/config:ro \
+  -v $(pwd)/enrichment_sets:/app/enrichment_sets:ro \
+  --name masldatlas \
+  masldatlas-app
+```
 
 #### Advanced Docker Usage
 
-**Run with custom port:**
-```bash
-docker run -p 8080:3838 masldatlas-app
-# Access at http://localhost:8080
-```
-
-**Run in detached mode (background):**
-```bash
-docker run -d -p 3838:3838 --name masldatlas masldatlas-app
-```
-
-**Stop the container:**
-```bash
-docker stop masldatlas
-```
+#### Advanced Docker Usage
 
 **View container logs:**
 ```bash
-docker logs masldatlas
+docker-compose logs -f masldatlas
 ```
 
-**Mount local datasets directory (for development):**
+**Stop the application:**
 ```bash
-docker run -p 3838:3838 -v $(pwd)/datasets:/app/datasets masldatlas-app
+docker-compose down
 ```
 
-#### Using Docker Compose (Alternative)
-
-Create a `docker-compose.yml` file:
-```yaml
-version: '3.8'
-services:
-  masldatlas:
-    build: .
-    ports:
-      - "3838:3838"
-    volumes:
-      - ./datasets:/app/datasets
-      - ./datasets_config.json:/app/datasets_config.json
-    restart: unless-stopped
-```
-
-Then run:
+**Rebuild and restart:**
 ```bash
-docker-compose up -d
+docker-compose up -d --build
+```
+
+**Dataset Management:**
+```bash
+# Check dataset volume status
+./scripts/dataset-management/manage_volume.sh status
+
+# Download/update datasets
+./scripts/dataset-management/manage_volume.sh download
+
+# List available datasets
+./scripts/dataset-management/manage_volume.sh list
+
+# Clean dataset cache
+./scripts/dataset-management/manage_volume.sh clean
 ```
 
 #### Quick Start Scripts
@@ -144,6 +148,39 @@ For even easier deployment, use the provided scripts:
 ```bash
 ./scripts/deployment/rebuild.sh
 ```
+
+### Option 3: Automatic Deployment (GitHub Actions)
+
+For production/development servers, MASLDatlas supports automatic deployment via GitHub Actions.
+
+#### Quick Setup
+```bash
+# On your development server
+git clone https://github.com/BioMAs/MASLDatlas.git
+cd MASLDatlas
+
+# Run the setup script
+./scripts/setup/setup-dev-server.sh
+
+# Test configuration
+./scripts/setup/test-dev-server.sh
+```
+
+#### Features
+- 🚀 **Automatic deployment** on push to `main` or `develop`
+- 📦 **Volume-based datasets** (12GB external storage)
+- 🔄 **Zero-downtime deployment** with backup/rollback
+- 🏥 **Health monitoring** and automated testing
+- 🧹 **Automatic cleanup** of old deployments
+
+#### Configuration
+1. **Server Setup**: Run `./scripts/setup/setup-dev-server.sh`
+2. **GitHub Secrets**: Configure SSH keys and server details
+3. **Deploy**: Push code to trigger automatic deployment
+
+📚 **Complete Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+🔧 **Troubleshooting**: See [docs/github-actions-setup.md](docs/github-actions-setup.md) for configuration help.
 
 These scripts will automatically:
 - Build the Docker image if needed
