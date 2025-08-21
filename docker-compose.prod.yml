@@ -117,9 +117,8 @@ services:
 
 # Network definitions
 networks:
-  traefik-network:
+  web:
     external: true
-    name: web
   masldatlas-internal:
     driver: bridge
     internal: true
