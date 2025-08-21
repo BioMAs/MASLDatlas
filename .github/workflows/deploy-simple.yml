@@ -85,8 +85,7 @@ jobs:
             echo "🧪 Testing dataset configuration..."
             python3 -m json.tool config/datasets_sources.json > /dev/null
             echo "✅ Dataset configuration JSON is valid"
-            cd scripts/dataset-management
-            python3 download_datasets.py list || echo "⚠️ Dataset listing failed"
+            python3 scripts/dataset-management/download_datasets.py list || echo "⚠️ Dataset listing failed"
           else
             echo "⚠️ No dataset configuration to test"
           fi

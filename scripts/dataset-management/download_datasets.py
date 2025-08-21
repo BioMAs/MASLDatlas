@@ -16,7 +16,14 @@ from urllib.parse import urlparse
 import argparse
 
 class DatasetDownloader:
-    def __init__(self, config_file="datasets_sources.json", datasets_dir=None):
+    def __init__(self, config_file=None, datasets_dir=None):
+        # Default config file path
+        if config_file is None:
+            config_file = "config/datasets_sources.json"
+            # If running from scripts/dataset-management/, adjust the path
+            if not os.path.exists(config_file):
+                config_file = "../../config/datasets_sources.json"
+        
         self.config_file = config_file
         # Use environment variable if set, otherwise use provided datasets_dir or default
         if datasets_dir is None:
@@ -262,8 +269,8 @@ def main():
                        help="Filter by species (Human, Mouse, Zebrafish, Integrated)")
     parser.add_argument("--no-parallel", action="store_true",
                        help="Disable parallel downloads")
-    parser.add_argument("--config", default="datasets_sources.json",
-                       help="Configuration file path")
+    parser.add_argument("--config", default=None,
+                       help="Configuration file path (default: config/datasets_sources.json)")
     parser.add_argument("--datasets-dir", default="datasets",
                        help="Datasets directory path")
     
