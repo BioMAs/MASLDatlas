@@ -30,6 +30,10 @@ services:
       - AUTO_DOWNLOAD_DATASETS=true
       - SKIP_DATASET_CHECK=false
     
+    # Port mapping
+    ports:
+      - "3838:3838"
+    
     # Volume mounts for persistent data
     volumes:
       - ./datasets:/app/datasets:ro
@@ -96,7 +100,7 @@ services:
       - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.period=1m"
       
       # Optional: HTTP to HTTPS redirect
-      - "traefik.http.routers.masldatlas-http.rule=Host(`masldatlas.yourdomain.com`)"
+      - "traefik.http.routers.masldatlas-http.rule=Host(`masldatlas.scilicium.com`)"
       - "traefik.http.routers.masldatlas-http.entrypoints=web"
       - "traefik.http.routers.masldatlas-http.middlewares=masldatlas-redirect"
       - "traefik.http.middlewares.masldatlas-redirect.redirectscheme.scheme=https"
@@ -118,7 +122,7 @@ services:
 # Network definitions
 networks:
   web:
-    external: true
+    external: true  # Réseau Traefik externe pour la production
   masldatlas-internal:
     driver: bridge
     internal: true

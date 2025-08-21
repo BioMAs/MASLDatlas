@@ -57,7 +57,7 @@ tryCatch({
 })
 
 # Load datasets configuration
-datasets_config <- jsonlite::fromJSON("datasets_config.json")
+datasets_config <- jsonlite::fromJSON("config/datasets_config.json")
 
 ui <- fluidPage(
   # Add disconnect message only if shinydisconnect is available
