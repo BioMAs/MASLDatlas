@@ -127,9 +127,5 @@ networks:
 volumes:
   masldatlas_cache:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /var/lib/docker/volumes/masldatlas_cache
   masldatlas_logs:
     driver: local
