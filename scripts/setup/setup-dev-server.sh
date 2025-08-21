@@ -28,7 +28,7 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 # Configuration
-DEV_USER="dev"
+DEV_USER="tdarde"
 PROJECT_DIR="/home/dev/masldatlas"
 CURRENT_USER=$(whoami)
 
