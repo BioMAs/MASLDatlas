@@ -5,6 +5,18 @@ figures/
 *.jpg
 *.jpeg
 
+# Configuration files (keep only main config)
+config/datasets_config_*.json
+!config/datasets_config.json
+
+# Temporary and test files
+tmp/
+*.tmp
+*.log
+*~
+.DS_Store
+Thumbs.db
+
 # R specific
 .Rhistory
 .RData

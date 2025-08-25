@@ -57,7 +57,15 @@ tryCatch({
 })
 
 # Load datasets configuration
-datasets_config <- jsonlite::fromJSON("config/datasets_config.json")
+# Temporarily use safer config to avoid 9GB dataset loading issues
+config_file <- if(file.exists("config/datasets_config_safe.json")) {
+  "config/datasets_config_safe.json"
+} else if(file.exists("config/datasets_config_temp.json")) {
+  "config/datasets_config_temp.json"
+} else {
+  "config/datasets_config.json"
+}
+datasets_config <- jsonlite::fromJSON(config_file)
 
 ui <- fluidPage(
   # Add disconnect message only if shinydisconnect is available
@@ -153,6 +161,20 @@ ui <- fluidPage(
                          selectInput("selection_organism", "Select Organism",
                                      choices = c("Human", "Mouse", "Zebrafish", "Integrated")),
                          uiOutput("dataset_selection_list"),
+                         # Add dataset size selection for large datasets
+                         conditionalPanel(
+                           condition = "input.selection_dataset && input.selection_dataset.includes('Fibrotic')",
+                           selectInput("dataset_size_option", "Dataset Size",
+                                       choices = c(
+                                         "Full dataset (9.2GB)" = "full",
+                                         "Large subset (20k cells)" = "sub20k", 
+                                         "Medium subset (10k cells)" = "sub10k",
+                                         "Small subset (5k cells)" = "sub5k"
+                                       ),
+                                       selected = "sub10k"),
+                           div(class = "help-text", style = "font-size: 11px; color: #666;",
+                               "⚠️ Full dataset may take 30+ minutes to load")
+                         ),
                          actionButton("import_dataset", class = "btn-primary", "Load Dataset", width = '100%')
             ),
             mainPanel(width = 8,
@@ -590,29 +612,146 @@ server <- function(input, output,session) {
     if(input$selection_organism %in% names(datasets_config)) {
       organism_data <- datasets_config[[input$selection_organism]]
       
-      # Convert the list structure to choices format
-      if(length(organism_data) == 1 && length(organism_data[[1]]) == 1) {
-        # Simple case: single dataset
-        selectInput("selection_dataset", "Select Dataset",
-                    choices = organism_data[[1]])
+      # Check if datasets are available for this organism
+      if(length(organism_data) == 0 || (length(organism_data) == 1 && length(organism_data[[1]]) == 0)) {
+        # No datasets available
+        div(
+          p(style = "color: #f39c12; font-weight: bold;", "⚠️ No datasets currently available"),
+          p(style = "color: #666; font-size: 12px;", "Large datasets are being optimized for better performance"),
+          disabled(selectInput("selection_dataset", "Select Dataset", choices = c("No datasets available" = "")))
+        )
       } else {
-        # Complex case: nested structure
-        selectInput("selection_dataset", "Select Dataset",
-                    choices = organism_data)
+        # Convert the list structure to choices format
+        if(length(organism_data) == 1 && length(organism_data[[1]]) >= 1) {
+          # Simple case: datasets available
+          selectInput("selection_dataset", "Select Dataset",
+                      choices = organism_data[[1]])
+        } else {
+          # Complex case: nested structure
+          selectInput("selection_dataset", "Select Dataset",
+                      choices = organism_data)
+        }
       }
+    } else {
+      # Organism not found in config
+      div(
+        p(style = "color: #e74c3c; font-weight: bold;", "❌ Organism not found in configuration"),
+        disabled(selectInput("selection_dataset", "Select Dataset", choices = c("Error" = "")))
+      )
     }
   })
   
   
   
   adata <- eventReactive(input$import_dataset, {
-    # Import
-    adata <- sc$read_h5ad(paste0("datasets/", input$selection_organism, "/", input$selection_dataset, ".h5ad"))
-    # Disable the button
-    shinyjs::disable("import_dataset")
-    updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
-    # Return the loaded dataset
-    return(adata)
+    # Validate inputs
+    if (is.null(input$selection_organism) || is.null(input$selection_dataset) || input$selection_dataset == "") {
+      showNotification("❌ Please select a valid organism and dataset", type = "error")
+      return(NULL)
+    }
+    
+    # Check if dataset name indicates unavailability
+    if (grepl("No datasets available|Error|Contact admin", input$selection_dataset, ignore.case = TRUE)) {
+      showNotification("❌ This dataset is not currently available", type = "error", duration = 10)
+      return(NULL)
+    }
+    
+    dataset_path <- paste0("datasets/", input$selection_organism, "/", input$selection_dataset, ".h5ad")
+    
+    # Check if dataset file exists before proceeding
+    if (!file.exists(dataset_path)) {
+      showNotification(
+        paste("❌ Dataset file not found:", basename(dataset_path)), 
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
+    }
+    
+    # Check if this is the large integrated dataset
+    is_large_dataset <- grepl("Fibrotic.*Cross.*Species.*002", input$selection_dataset)
+    
+    if (is_large_dataset && !is.null(input$dataset_size_option) && input$dataset_size_option != "full") {
+      # Use optimized version based on user selection
+      size_suffix <- switch(input$dataset_size_option,
+                           "sub5k" = "_sub5k",
+                           "sub10k" = "_sub10k", 
+                           "sub20k" = "_sub20k",
+                           "")
+      
+      optimized_path <- paste0("datasets_optimized/", 
+                              tools::file_path_sans_ext(input$selection_dataset), 
+                              size_suffix, ".h5ad")
+      
+      if (file.exists(optimized_path)) {
+        dataset_path <- optimized_path
+        showNotification(
+          paste("✅ Loading", input$dataset_size_option, "version for better performance"), 
+          type = "message"
+        )
+      } else {
+        # If optimized version doesn't exist, offer to create it
+        showModal(modalDialog(
+          title = "Optimized Dataset Not Found",
+          p("The selected dataset size is not available. You have two options:"),
+          tags$ol(
+            tags$li("Use the full dataset (may take 30+ minutes to load)"),
+            tags$li("Create optimized versions using the dataset optimization script")
+          ),
+          footer = tagList(
+            actionButton("use_full_dataset", "Use Full Dataset", class = "btn-warning"),
+            modalButton("Cancel")
+          )
+        ))
+        return(NULL)
+      }
+    } else if (is_large_dataset && (is.null(input$dataset_size_option) || input$dataset_size_option == "full")) {
+      # Show strong warning for full dataset
+      showNotification(
+        "⚠️ Loading full 9.2GB dataset. This may take 30+ minutes and use significant memory.",
+        type = "warning",
+        duration = 15
+      )
+    }
+    
+    # Show loading progress
+    progress <- Progress$new()
+    progress$set(message = "Loading dataset...", value = 0)
+    on.exit(progress$close())
+    
+    progress$set(value = 0.3, detail = "Reading file...")
+    
+    tryCatch({
+      # Import with error handling
+      adata <- sc$read_h5ad(dataset_path)
+      
+      progress$set(value = 0.8, detail = "Processing metadata...")
+      
+      # Disable the button
+      shinyjs::disable("import_dataset")
+      updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
+      
+      progress$set(value = 1, detail = "Complete!")
+      
+      showNotification(
+        paste("✅ Dataset loaded successfully:", 
+              format(adata$n_obs, big.mark = ","), "cells ×", 
+              format(adata$n_vars, big.mark = ","), "genes"),
+        type = "message"
+      )
+      
+      # Return the loaded dataset
+      return(adata)
+      
+    }, error = function(e) {
+      progress$close()
+      showNotification(
+        paste("❌ Error loading dataset:", e$message),
+        type = "error",
+        duration = NULL
+      )
+      return(NULL)
+    })
   })
   
   
