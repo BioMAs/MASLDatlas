@@ -56,16 +56,8 @@ tryCatch({
   pydeseq2_ds <- NULL
 })
 
-# Load datasets configuration
-# Temporarily use safer config to avoid 9GB dataset loading issues
-config_file <- if(file.exists("config/datasets_config_safe.json")) {
-  "config/datasets_config_safe.json"
-} else if(file.exists("config/datasets_config_temp.json")) {
-  "config/datasets_config_temp.json"
-} else {
-  "config/datasets_config.json"
-}
-datasets_config <- jsonlite::fromJSON(config_file)
+# Load datasets configuration  
+datasets_config <- jsonlite::fromJSON("config/datasets_config.json")
 
 ui <- fluidPage(
   # Add disconnect message only if shinydisconnect is available
@@ -278,7 +270,7 @@ ui <- fluidPage(
                          )
                 )
               ),
-              conditionalPanel(condition = "input.cluster_selection_visualization_type == 'Visualize Expression of Geneset'  && input.visualize_expression_genest != 0",
+              conditionalPanel(condition = "input.cluster_selection_visualization_type == 'Visualize Expression of Geneset'  && input.visualize_cluster_selection != 0",
                                fluidRow(column(width = 6), column(width = 6,
                                                                   selectInput("first_geneset_enrichment_violin_selection", label = NULL, choices = c("Clusters", "Groups")))),
                                fluidRow(column(width = 6,
@@ -1505,11 +1497,15 @@ server <- function(input, output,session) {
     
     output$top_correlated_genes <- renderUI({
       req(input$visualize_cluster_selection, statistics_coexpression())
-      fluidRow(column(width = 6,
-                      actionButton("top_correlated_first_gene",paste0("Find Correlated Genes with ", input$gene_selection_cluster_coexpression_first), icon = icon("chart-line"),class = "btn-primary", width = '100%')),
-               column(width = 6,
-                      actionButton("top_correlated_second_gene",paste0("Find Correlated Genes with ", input$gene_selection_cluster_coexpression_second), icon = icon("chart-line"),class = "btn-primary", width = '100%')))
-      
+      fluidRow(
+        column(width = 12,
+               div(style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 10px; margin-bottom: 15px;",
+                   HTML("<small><i class='fas fa-info-circle'></i> Note: Correlation analysis may take 2-5 minutes for large datasets. The analysis is limited to the 1000 most variable genes for performance.</small>"))),
+        column(width = 6,
+               actionButton("top_correlated_first_gene",paste0("Find Correlated Genes with ", input$gene_selection_cluster_coexpression_first), icon = icon("chart-line"),class = "btn-primary", width = '100%')),
+        column(width = 6,
+               actionButton("top_correlated_second_gene",paste0("Find Correlated Genes with ", input$gene_selection_cluster_coexpression_second), icon = icon("chart-line"),class = "btn-primary", width = '100%'))
+      )
     })
     
     
@@ -1521,8 +1517,20 @@ server <- function(input, output,session) {
       colnames(normalized_counts) <- gene_list_adata()
       first_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_first)]
       
+      # Optimization: Limit to most variable genes for faster computation
+      if(ncol(normalized_counts) > 1000) {
+        gene_vars <- apply(normalized_counts, 2, var, na.rm = TRUE)
+        top_genes <- names(sort(gene_vars, decreasing = TRUE)[1:1000])
+        normalized_counts <- normalized_counts[, top_genes, drop = FALSE]
+      }
+      
+      # Use vectorized correlation for better performance
       correlation_df <- sapply(names(normalized_counts), function(x) {
-        test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "spearman")
+        if(input$test_choice == "Spearman") {
+          test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "spearman")
+        } else {
+          test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "pearson")
+        }
         return(c(correlation = test_result$estimate, p_value = test_result$p.value))
       })
       
@@ -1533,14 +1541,28 @@ server <- function(input, output,session) {
       colnames(correlation_df)[1:2] <- c("Correlation","p-val")
       correlation_df <- correlation_df[, c("Gene", "Correlation", "p-val", "Bonferroni_p_value")]
       
+      # Sort by absolute correlation value
+      correlation_df <- correlation_df[order(abs(correlation_df$Correlation), decreasing = TRUE), ]
+      
       return(correlation_df)}else{
         normalized_counts <- as.matrix(filtered_adata()$X)
         normalized_counts <- as.data.frame(normalized_counts)
         colnames(normalized_counts) <- gene_list_adata()
         first_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_first)]
         
+        # Optimization: Limit to most variable genes for faster computation
+        if(ncol(normalized_counts) > 1000) {
+          gene_vars <- apply(normalized_counts, 2, var, na.rm = TRUE)
+          top_genes <- names(sort(gene_vars, decreasing = TRUE)[1:1000])
+          normalized_counts <- normalized_counts[, top_genes, drop = FALSE]
+        }
+        
         correlation_df <- sapply(names(normalized_counts), function(x) {
-          test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "spearman")
+          if(input$test_choice == "Spearman") {
+            test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "spearman")
+          } else {
+            test_result <- cor.test(first_gene_count, normalized_counts[[x]], method = "pearson")
+          }
           return(c(correlation = test_result$estimate, p_value = test_result$p.value))
         })
         
@@ -1550,6 +1572,9 @@ server <- function(input, output,session) {
         correlation_df$Gene <- rownames(correlation_df)
         colnames(correlation_df)[1:2] <- c("Correlation","p-val")
         correlation_df <- correlation_df[, c("Gene", "Correlation", "p-val", "Bonferroni_p_value")]
+        
+        # Sort by absolute correlation value
+        correlation_df <- correlation_df[order(abs(correlation_df$Correlation), decreasing = TRUE), ]
         
         return(correlation_df)
         
@@ -1582,8 +1607,19 @@ server <- function(input, output,session) {
       colnames(normalized_counts) <- gene_list_adata()
       second_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_second)]
       
+      # Optimization: Limit to most variable genes for faster computation
+      if(ncol(normalized_counts) > 1000) {
+        gene_vars <- apply(normalized_counts, 2, var, na.rm = TRUE)
+        top_genes <- names(sort(gene_vars, decreasing = TRUE)[1:1000])
+        normalized_counts <- normalized_counts[, top_genes, drop = FALSE]
+      }
+      
       correlation_df <- sapply(names(normalized_counts), function(x) {
-        test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "spearman")
+        if(input$test_choice == "Spearman") {
+          test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "spearman")
+        } else {
+          test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "pearson")
+        }
         return(c(correlation = test_result$estimate, p_value = test_result$p.value))
       })
       
@@ -1594,6 +1630,9 @@ server <- function(input, output,session) {
       colnames(correlation_df)[1:2] <- c("Correlation","p-val")
       correlation_df <- correlation_df[, c("Gene", "Correlation", "p-val", "Bonferroni_p_value")]
       
+      # Sort by absolute correlation value
+      correlation_df <- correlation_df[order(abs(correlation_df$Correlation), decreasing = TRUE), ]
+      
       return(correlation_df)
       }else{
         normalized_counts <- as.matrix(filtered_adata()$X)
@@ -1601,8 +1640,19 @@ server <- function(input, output,session) {
         colnames(normalized_counts) <- gene_list_adata()
         second_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_second)]
         
+        # Optimization: Limit to most variable genes for faster computation
+        if(ncol(normalized_counts) > 1000) {
+          gene_vars <- apply(normalized_counts, 2, var, na.rm = TRUE)
+          top_genes <- names(sort(gene_vars, decreasing = TRUE)[1:1000])
+          normalized_counts <- normalized_counts[, top_genes, drop = FALSE]
+        }
+        
         correlation_df <- sapply(names(normalized_counts), function(x) {
-          test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "spearman")
+          if(input$test_choice == "Spearman") {
+            test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "spearman")
+          } else {
+            test_result <- cor.test(second_gene_count, normalized_counts[[x]], method = "pearson")
+          }
           return(c(correlation = test_result$estimate, p_value = test_result$p.value))
         })
         
@@ -1613,6 +1663,8 @@ server <- function(input, output,session) {
         colnames(correlation_df)[1:2] <- c("Correlation","p-val")
         correlation_df <- correlation_df[, c("Gene", "Correlation", "p-val", "Bonferroni_p_value")]
         
+        # Sort by absolute correlation value
+        correlation_df <- correlation_df[order(abs(correlation_df$Correlation), decreasing = TRUE), ]
         
         return(correlation_df)
       }

@@ -7,7 +7,6 @@ services:
       - "3838:3838"
     volumes:
       - ./datasets:/app/datasets
-      - ./config/datasets_config_safe.json:/app/config/datasets_config_safe.json
       - ./config/datasets_config.json:/app/config/datasets_config.json
       - ./config/datasets_sources.json:/app/config/datasets_sources.json
       - ./enrichment_sets:/app/enrichment_sets
