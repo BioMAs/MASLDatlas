@@ -43,13 +43,13 @@ services:
       - masldatlas_cache:/app/app_cache
       - masldatlas_logs:/app/logs
     
-    # Health check
+    # Health check with improved monitoring
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3838/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3838/"] 
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 120s
     
     # Security settings
     security_opt:

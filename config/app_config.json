@@ -1,0 +1,83 @@
+{
+  "performance": {
+    "cache": {
+      "enabled": true,
+      "max_size_mb": 2048,
+      "ttl_seconds": 3600,
+      "cache_datasets": true,
+      "cache_plots": true
+    },
+    "memory": {
+      "max_usage_gb": 8,
+      "warning_threshold_gb": 6,
+      "cleanup_threshold_gb": 7,
+      "gc_interval_minutes": 30
+    },
+    "datasets": {
+      "lazy_loading": true,
+      "chunk_size": 10000,
+      "max_cells_full_load": 50000,
+      "auto_subsample_threshold": 100000,
+      "compression_level": 6
+    },
+    "ui": {
+      "debounce_ms": 500,
+      "progress_update_interval_ms": 100,
+      "max_plot_size_mb": 50,
+      "async_loading": true
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "log_level": "INFO",
+    "health_check_interval_seconds": 30,
+    "metrics": {
+      "memory_usage": true,
+      "response_time": true,
+      "error_rate": true,
+      "active_users": true
+    },
+    "alerts": {
+      "high_memory_threshold_gb": 7,
+      "slow_response_threshold_ms": 5000,
+      "error_rate_threshold_percent": 5
+    }
+  },
+  "datasets": {
+    "optimized_versions": {
+      "enabled": true,
+      "sizes": [5000, 10000, 20000, 50000],
+      "default_size": 10000,
+      "auto_select_size": true
+    },
+    "validation": {
+      "check_file_exists": true,
+      "check_file_readable": true,
+      "check_file_size": true,
+      "max_load_time_seconds": 300
+    }
+  },
+  "error_handling": {
+    "graceful_degradation": true,
+    "fallback_datasets": true,
+    "retry_attempts": 3,
+    "timeout_seconds": 60,
+    "user_notifications": {
+      "show_technical_errors": false,
+      "friendly_error_messages": true,
+      "suggest_solutions": true
+    }
+  },
+  "security": {
+    "rate_limiting": {
+      "enabled": true,
+      "max_requests_per_minute": 60,
+      "max_concurrent_users": 50
+    },
+    "data_protection": {
+      "sanitize_inputs": true,
+      "validate_file_uploads": true,
+      "prevent_path_traversal": true
+    }
+  }
+}

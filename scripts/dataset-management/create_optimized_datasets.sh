@@ -1,25 +1,81 @@
 #!/bin/bash
 
-# Script pour créer des versions échantillonnées du dataset intégré
-# Ce script utilise Python directement sans environnement conda
+# 🚀 MASLDatlas Dataset Optimization Script
+# Creates optimized versions of large datasets for better performance
+# Author: MASLDatlas Team
+# Version: 2.0
 
-echo "🚀 Creating optimized versions of large dataset..."
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+echo "🚀 MASLDatlas Dataset Optimization Suite"
 echo "============================================================"
+echo "📅 $(date)"
+echo "🔧 Optimizing datasets for better performance..."
+echo ""
 
+# Configuration
 DATASET_PATH="datasets/Integrated/Fibrotic Integrated Cross Species-002.h5ad"
 OUTPUT_DIR="datasets_optimized"
+LOG_FILE="logs/dataset_optimization_$(date +%Y%m%d_%H%M%S).log"
+
+# Create logs directory
+mkdir -p logs
+
+# Logging function
+log() {
+    local message="$1"
+    echo "$message"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $message" >> "$LOG_FILE"
+}
+
+# Error handling function
+handle_error() {
+    local exit_code=$?
+    log "❌ Error occurred on line $1. Exit code: $exit_code"
+    log "🧹 Cleaning up temporary files..."
+    rm -f /tmp/subsample_dataset.py
+    exit $exit_code
+}
+
+# Set up error trap
+trap 'handle_error $LINENO' ERR
+
+# Validate prerequisites
+check_prerequisites() {
+    log "🔍 Checking prerequisites..."
+    
+    # Check Python
+    if ! command -v python3 &> /dev/null; then
+        log "❌ Python 3 is required but not installed"
+        exit 1
+    fi
+    
+    # Check Python packages
+    python3 -c "import scanpy, pandas, numpy" 2>/dev/null || {
+        log "❌ Required Python packages not found"
+        log "💡 Install with: pip install scanpy pandas numpy"
+        exit 1
+    }
+    
+    log "✅ Prerequisites check passed"
+}
 
 # Vérifier si le dataset existe
 if [ ! -f "$DATASET_PATH" ]; then
-    echo "❌ Dataset not found: $DATASET_PATH"
+    log "❌ Dataset not found: $DATASET_PATH"
+    log "💡 Please ensure the dataset is downloaded first"
     exit 1
 fi
+
+# Run prerequisites check
+check_prerequisites
 
 # Créer le répertoire de sortie
 mkdir -p "$OUTPUT_DIR"
 
-echo "📁 Output directory: $OUTPUT_DIR"
-echo "📊 Original dataset: $(du -h "$DATASET_PATH" | cut -f1)"
+log "📁 Output directory: $OUTPUT_DIR"
+log "📊 Original dataset: $(du -h "$DATASET_PATH" | cut -f1)"
+log "📝 Log file: $LOG_FILE"
 echo ""
 
 # Créer un script Python temporaire pour l'échantillonnage

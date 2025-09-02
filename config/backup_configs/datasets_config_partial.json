@@ -1,0 +1,27 @@
+{
+  "Human": {
+    "Datasets": [],
+    "Status": "Downloading",
+    "Description": "Human liver single-cell RNA-seq data (en cours de téléchargement)"
+  },
+  "Mouse": {
+    "Datasets": [
+      "GSE145086"
+    ],
+    "Status": "Available", 
+    "Description": "Mouse liver single-cell RNA-seq data"
+  },
+  "Zebrafish": {
+    "Datasets": [
+      "GSE181987"
+    ],
+    "Status": "Available",
+    "Description": "Zebrafish liver single-cell RNA-seq data"
+  },
+  "Integrated": {
+    "Datasets": [],
+    "Status": "Pending",
+    "Description": "Cross-species integrated dataset (sera téléchargé après optimisation)",
+    "Message": "Ce dataset volumineux (9.2GB) sera téléchargé séparément après création des versions optimisées."
+  }
+}

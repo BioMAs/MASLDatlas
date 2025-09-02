@@ -59,6 +59,78 @@ tryCatch({
 # Load datasets configuration  
 datasets_config <- jsonlite::fromJSON("config/datasets_config.json")
 
+# Define NULL-coalescing operator for cleaner code
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+# Helper function to get organism choices from config
+get_organism_choices <- function(config) {
+  choices <- list()
+  for (organism in names(config)) {
+    organism_data <- config[[organism]]
+    status <- organism_data[["Status"]] %||% "Unknown"
+    description <- organism_data[["Description"]] %||% "No description"
+    
+    # Create a display name with status indicator
+    if (status == "Available") {
+      display_name <- paste0("✅ ", organism)
+    } else if (status == "Optional") {
+      display_name <- paste0("⚪ ", organism, " (Optional)")
+    } else {
+      display_name <- paste0("⏳ ", organism, " (", status, ")")
+    }
+    
+    choices[[display_name]] <- organism
+  }
+  return(choices)
+}
+
+# Helper function to get organism data safely
+get_organism_data <- function(config, organism_key) {
+  if (!organism_key %in% names(config)) {
+    return(list(
+      datasets = character(0),
+      status = "Not Found",
+      description = "Organism not found in configuration",
+      message = NULL
+    ))
+  }
+  
+  organism_data <- config[[organism_key]]
+  return(list(
+    datasets = organism_data[["Datasets"]] %||% character(0),
+    status = organism_data[["Status"]] %||% "Unknown",
+    description = organism_data[["Description"]] %||% "No description available",
+    message = organism_data[["Message"]] %||% NULL,
+    download_command = organism_data[["DownloadCommand"]] %||% NULL
+  ))
+}
+
+# Function to reload datasets configuration if needed
+reload_datasets_config <- function() {
+  tryCatch({
+    jsonlite::fromJSON("config/datasets_config.json")
+  }, error = function(e) {
+    warning("Failed to reload datasets configuration: ", e$message)
+    return(datasets_config) # Return original config if reload fails
+  })
+}
+
+# Function to validate dataset file existence
+validate_dataset_path <- function(organism, dataset_id) {
+  base_path <- paste0("datasets/", organism, "/", dataset_id, ".h5ad")
+  file_exists <- file.exists(base_path)
+  file_size <- if (file_exists) file.size(base_path) else 0
+  
+  return(list(
+    path = base_path,
+    exists = file_exists,
+    size = file_size
+  ))
+}
+
+# Generate organism choices from config
+organism_choices <- get_organism_choices(datasets_config)
+
 ui <- fluidPage(
   # Add disconnect message only if shinydisconnect is available
   if (requireNamespace("shinydisconnect", quietly = TRUE)) {
@@ -151,7 +223,7 @@ ui <- fluidPage(
           sidebarLayout(
             sidebarPanel(width = 2,
                          selectInput("selection_organism", "Select Organism",
-                                     choices = c("Human", "Mouse", "Zebrafish", "Integrated")),
+                                     choices = organism_choices),
                          uiOutput("dataset_selection_list"),
                          # Add dataset size selection for large datasets
                          conditionalPanel(
@@ -601,36 +673,47 @@ server <- function(input, output,session) {
   ##ui actions
   
   output$dataset_selection_list <- renderUI({
-    if(input$selection_organism %in% names(datasets_config)) {
-      organism_data <- datasets_config[[input$selection_organism]]
-      
-      # Check if datasets are available for this organism
-      if(length(organism_data) == 0 || (length(organism_data) == 1 && length(organism_data[[1]]) == 0)) {
-        # No datasets available
-        div(
-          p(style = "color: #f39c12; font-weight: bold;", "⚠️ No datasets currently available"),
-          p(style = "color: #666; font-size: 12px;", "Large datasets are being optimized for better performance"),
-          disabled(selectInput("selection_dataset", "Select Dataset", choices = c("No datasets available" = "")))
-        )
-      } else {
-        # Convert the list structure to choices format
-        if(length(organism_data) == 1 && length(organism_data[[1]]) >= 1) {
-          # Simple case: datasets available
-          selectInput("selection_dataset", "Select Dataset",
-                      choices = organism_data[[1]])
-        } else {
-          # Complex case: nested structure
-          selectInput("selection_dataset", "Select Dataset",
-                      choices = organism_data)
-        }
-      }
+    # Use helper function to get organism data safely
+    organism_data <- get_organism_data(datasets_config, input$selection_organism)
+    
+    # Extract data using the helper function
+    datasets <- organism_data$datasets
+    status <- organism_data$status
+    description <- organism_data$description
+    message <- organism_data$message
+    
+    # Check if datasets are available for this organism
+    if(length(datasets) == 0) {
+      # No datasets available
+      content <- div(
+        p(style = "color: #f39c12; font-weight: bold;", "⚠️ No datasets currently available"),
+        p(style = "color: #666; font-size: 12px;", description),
+        if (!is.null(message)) {
+          p(style = "color: #7f8c8d; font-size: 11px; font-style: italic;", message)
+        },
+        disabled(selectInput("selection_dataset", "Select Dataset", choices = c("No datasets available" = "")))
+      )
+    } else if(status == "Available") {
+      # Datasets available - create named choices with description
+      choices <- setNames(datasets, paste0(datasets, " - Available"))
+      content <- div(
+        p(style = "color: #27ae60; font-weight: bold;", paste0("✅ Status: ", status)),
+        p(style = "color: #666; font-size: 12px;", description),
+        selectInput("selection_dataset", "Select Dataset", choices = choices)
+      )
     } else {
-      # Organism not found in config
-      div(
-        p(style = "color: #e74c3c; font-weight: bold;", "❌ Organism not found in configuration"),
-        disabled(selectInput("selection_dataset", "Select Dataset", choices = c("Error" = "")))
+      # Datasets not ready (Optional, In Progress, etc.)
+      content <- div(
+        p(style = "color: #f39c12; font-weight: bold;", paste0("⏳ Status: ", status)),
+        p(style = "color: #666; font-size: 12px;", description),
+        if (!is.null(message)) {
+          p(style = "color: #7f8c8d; font-size: 11px; font-style: italic;", message)
+        },
+        disabled(selectInput("selection_dataset", "Select Dataset", choices = setNames("", paste0("Status: ", status))))
       )
     }
+    
+    return(content)
   })
   
   
@@ -643,22 +726,32 @@ server <- function(input, output,session) {
     }
     
     # Check if dataset name indicates unavailability
-    if (grepl("No datasets available|Error|Contact admin", input$selection_dataset, ignore.case = TRUE)) {
+    if (grepl("No datasets available|Error|Contact admin|Status:", input$selection_dataset, ignore.case = TRUE)) {
       showNotification("❌ This dataset is not currently available", type = "error", duration = 10)
       return(NULL)
     }
     
-    dataset_path <- paste0("datasets/", input$selection_organism, "/", input$selection_dataset, ".h5ad")
+    # Use validation function to check dataset path
+    dataset_info <- validate_dataset_path(input$selection_organism, input$selection_dataset)
     
     # Check if dataset file exists before proceeding
-    if (!file.exists(dataset_path)) {
-      showNotification(
-        paste("❌ Dataset file not found:", basename(dataset_path)), 
-        type = "error",
-        duration = 10
-      )
+    if (!dataset_info$exists) {
+      # Get organism data to provide more informative error message
+      organism_data <- get_organism_data(datasets_config, input$selection_organism)
+      
+      error_message <- paste0("❌ Dataset file not found: ", basename(dataset_info$path))
+      if (organism_data$status != "Available") {
+        error_message <- paste0(error_message, "\n💡 Status: ", organism_data$status)
+        if (!is.null(organism_data$download_command)) {
+          error_message <- paste0(error_message, "\n📥 To download: ", organism_data$download_command)
+        }
+      }
+      
+      showNotification(error_message, type = "error", duration = 15)
       return(NULL)
     }
+    
+    dataset_path <- dataset_info$path
     
     # Check if this is the large integrated dataset
     is_large_dataset <- grepl("Fibrotic.*Cross.*Species.*002", input$selection_dataset)

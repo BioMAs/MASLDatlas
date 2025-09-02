@@ -13,6 +13,7 @@ services:
     environment:
       - SHINY_PORT=3838
       - SHINY_HOST=0.0.0.0
+      - SKIP_DATASET_CHECK=true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3838"]

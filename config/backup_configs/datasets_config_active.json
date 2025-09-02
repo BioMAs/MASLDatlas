@@ -1,0 +1,34 @@
+{
+  "Human": {
+    "Datasets": [
+      "GSE181483"
+    ],
+    "Status": "Available",
+    "Description": "Human liver single-cell RNA-seq data"
+  },
+  "Mouse": {
+    "Datasets": [
+      "GSE145086"
+    ],
+    "Status": "Available", 
+    "Description": "Mouse liver single-cell RNA-seq data"
+  },
+  "Zebrafish": {
+    "Datasets": [
+      "GSE181987"
+    ],
+    "Status": "Available",
+    "Description": "Zebrafish liver single-cell RNA-seq data"
+  },
+  "Integrated": {
+    "Datasets": [],
+    "Status": "Optimizing",
+    "Description": "Cross-species integrated dataset (currently being optimized for better performance)",
+    "Message": "This dataset is temporarily unavailable while we create optimized versions for better performance. Please use individual species datasets in the meantime.",
+    "OptimizedVersions": {
+      "Available": false,
+      "Sizes": ["5k", "10k", "20k", "full"],
+      "EstimatedCompletion": "Available soon"
+    }
+  }
+}
