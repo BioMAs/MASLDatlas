@@ -10,6 +10,7 @@ services:
       - ./config/datasets_config.json:/app/config/datasets_config.json
       - ./config/datasets_sources.json:/app/config/datasets_sources.json
       - ./enrichment_sets:/app/enrichment_sets
+      - ./www:/app/www
     environment:
       - SHINY_PORT=3838
       - SHINY_HOST=0.0.0.0

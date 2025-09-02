@@ -151,9 +151,97 @@ ui <- fluidPage(
   navbarPage(
     title = "Multi-species scRNA-seq Atlas of MASLD",
     theme = bs_theme(preset = 'flatly', base_font = 'Lato', code_font = 'Lato', heading_font = 'Lato'),
+    fluid = TRUE,
+    windowTitle = "MASLDatlas",
     tags$head(
-      tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "tabicon.png"),
+      tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "tabicon.PNG"),
+      tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"),
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom-modern.css"),
+      useShinyjs(),
       tags$style(HTML("
+  /* Variables CSS pour les couleurs */
+  :root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+  }
+
+  /* Navbar full width et améliorée */
+  .navbar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+    border: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .navbar-brand {
+    font-weight: bold !important;
+    color: white !important;
+  }
+
+  .navbar-nav .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500 !important;
+  }
+
+  .navbar-nav .nav-link:hover,
+  .navbar-nav .nav-link.active {
+    color: white !important;
+    background-color: rgba(255,255,255,0.1) !important;
+    border-radius: 4px !important;
+  }
+
+  /* Cache le workflow tab */
+  li[data-value='tab_workflow'] {
+    display: none !important;
+  }
+
+  .nav-link[data-value='tab_workflow'] {
+    display: none !important;
+  }
+
+  /* Container full width */
+  .container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    margin: 0 !important;
+  }
+
+  /* Force body and html to use full width */
+  body, html {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Bootstrap container overrides */
+  .container, .container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+
+  /* Tab content full width */
+  .tab-content {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .tab-pane {
+    width: 100% !important;
+    padding: 15px !important;
+  }
+
+  /* Navbar container full width */
+  .navbar > .container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+
   #imageoutput_violin_expression_clusters img,
   #imageoutput_violin_expression_clusters_groups img,
   #imageoutput_dge_ranks img,
