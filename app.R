@@ -153,6 +153,8 @@ ui <- fluidPage(
     theme = bs_theme(preset = 'flatly', base_font = 'Lato', code_font = 'Lato', heading_font = 'Lato'),
     fluid = TRUE,
     windowTitle = "MASLDatlas",
+    id = "navbar",
+    selected = "tab_explore_datasets",
     tags$head(
       tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "tabicon.PNG"),
       tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"),
@@ -169,7 +171,32 @@ ui <- fluidPage(
   .navbar {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
     border: none !important;
-    width: 100% !important;
+    width: 100vw !important;
+    left: 0 !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    position: relative !important;
+    z-index: 1000 !important;
+  }
+
+  /* Force navbar container to break out of parent containers */
+  .navbar > .container-fluid {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    margin: 0 !important;
+  }
+
+  /* Remove any padding/margin from body that could affect navbar */
+  body .container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Specific override for navbar container only */
+  body > .container-fluid {
+    padding: 0 !important;
     margin: 0 !important;
   }
 
@@ -292,42 +319,80 @@ ui <- fluidPage(
   }
 "))
     ),
+    
+    # Premier onglet - Explore & Analyze Datasets (par défaut)
     tabPanel(
-      title = "Workflow",
-      value = "tab_workflow",
-      icon = icon("network-wired")
-    ),
-    tabPanel(
-      title = "Explore & Analyze Datasets",
+      title = div(
+        span("📊", style = "margin-right: 5px;"),
+        "Explore & Analyze Datasets"
+      ),
       value = "tab_explore_datasets",
-      icon = icon("hourglass"),
+      icon = icon("chart-bar"),
+      
+      # Ajout d'une description de l'onglet
+      div(class = "tab-description", style = "background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3498db;",
+        h4("🔬 Single-cell RNA-seq Data Analysis Pipeline", style = "margin-top: 0; color: #2c3e50;"),
+        p("Explore multi-species scRNA-seq datasets, perform differential expression analysis, and visualize cellular heterogeneity. Follow the step-by-step workflow below:")
+      ),
+      
       tabsetPanel(
         type = "pills",
+        id = "main_analysis_tabs",
+        
+        # Step 1: Import Dataset
         tabPanel(
-          title = "Import Dataset",
+          title = div(
+            span("📥", style = "margin-right: 5px;"),
+            "1. Import Dataset"
+          ),
           value = "subtab_import_dataset",
-          icon = icon("file-import"),
+          icon = icon("database"),
+          
+          div(class = "step-header", style = "background: linear-gradient(135deg, #e8f5e8, #f0f8ff); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
+            h5("Step 1: Load and Visualize Your Dataset", style = "margin: 0; color: #27ae60;"),
+            p("Select an organism and dataset to begin your analysis. View UMAP projections and explore cellular composition.", 
+              style = "margin: 5px 0 0 0; font-size: 0.9rem; color: #666;")
+          ),
+          
           hr(),
           sidebarLayout(
-            sidebarPanel(width = 2,
-                         selectInput("selection_organism", "Select Organism",
-                                     choices = organism_choices),
-                         uiOutput("dataset_selection_list"),
-                         # Add dataset size selection for large datasets
-                         conditionalPanel(
-                           condition = "input.selection_dataset && input.selection_dataset.includes('Fibrotic')",
-                           selectInput("dataset_size_option", "Dataset Size",
-                                       choices = c(
-                                         "Full dataset (9.2GB)" = "full",
-                                         "Large subset (20k cells)" = "sub20k", 
-                                         "Medium subset (10k cells)" = "sub10k",
-                                         "Small subset (5k cells)" = "sub5k"
-                                       ),
-                                       selected = "sub10k"),
-                           div(class = "help-text", style = "font-size: 11px; color: #666;",
-                               "⚠️ Full dataset may take 30+ minutes to load")
-                         ),
-                         actionButton("import_dataset", class = "btn-primary", "Load Dataset", width = '100%')
+            sidebarPanel(
+              width = 2,
+              class = "analysis-sidebar",
+              
+              div(class = "sidebar-section",
+                selectInput("selection_organism", "Select Organism",
+                           choices = organism_choices)
+              ),
+              
+              div(class = "sidebar-section",
+                uiOutput("dataset_selection_list")
+              ),
+              
+              # Add dataset size selection for large datasets
+              conditionalPanel(
+                condition = "input.selection_dataset && input.selection_dataset.includes('Fibrotic')",
+                div(class = "sidebar-section",
+                  selectInput("dataset_size_option", "Dataset Size",
+                             choices = c(
+                               "Full dataset (9.2GB)" = "full",
+                               "Large subset (20k cells)" = "sub20k", 
+                               "Medium subset (10k cells)" = "sub10k",
+                               "Small subset (5k cells)" = "sub5k"
+                             ),
+                             selected = "sub10k"),
+                  div(class = "help-text", 
+                      style = "font-size: 11px; color: #666; background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px;",
+                      "⚠️ Full dataset may take 30+ minutes to load")
+                )
+              ),
+              
+              div(class = "sidebar-action",
+                actionButton("import_dataset", 
+                           class = "btn-primary btn-block", 
+                           "🚀 Load Dataset", 
+                           width = '100%')
+              )
             ),
             mainPanel(width = 8,
               fluidRow(
@@ -363,10 +428,21 @@ ui <- fluidPage(
             )
           )
         ),
+        # Step 2: Cluster Selection
         tabPanel(
-          title = "Cluster Selection",
+          title = div(
+            span("🎯", style = "margin-right: 5px;"),
+            "2. Cluster Selection"
+          ),
           value = "subtab_cluster_selection",
-          icon = icon("crosshairs"),
+          icon = icon("bullseye"),
+          
+          div(class = "step-header", style = "background: linear-gradient(135deg, #fff3e0, #e8f5e8); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
+            h5("Step 2: Select and Analyze Cell Clusters", style = "margin: 0; color: #f39c12;"),
+            p("Choose specific cell clusters for detailed analysis. Visualize gene expression patterns and co-expression relationships.", 
+              style = "margin: 5px 0 0 0; font-size: 0.9rem; color: #666;")
+          ),
+          
           hr(),
           sidebarLayout(
             sidebarPanel(width = 2,
@@ -506,10 +582,21 @@ ui <- fluidPage(
             )
           )
         ),
+        # Step 3: Differential Expression
         tabPanel(
-          title = "Differential Expression",
+          title = div(
+            span("📊", style = "margin-right: 5px;"),
+            "3. Differential Expression"
+          ),
           value = "subtab_differential_expression",
-          icon = icon("bars-staggered"),
+          icon = icon("chart-line"),
+          
+          div(class = "step-header", style = "background: linear-gradient(135deg, #fce4ec, #f3e5f5); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
+            h5("Step 3: Compare Gene Expression Between Conditions", style = "margin: 0; color: #e91e63;"),
+            p("Perform differential gene expression analysis between clusters or groups. Generate volcano plots and identify key biomarkers.", 
+              style = "margin: 5px 0 0 0; font-size: 0.9rem; color: #666;")
+          ),
+          
           hr(),
           sidebarLayout(
             sidebarPanel(width = 2,
@@ -632,10 +719,21 @@ ui <- fluidPage(
             )
           )
         ),
+        # Step 4: Pseudo Bulk Analysis
         tabPanel(
-          title = "Pseudo Bulk",
-          value = "subtab_pseudo_buk",
-          icon = icon("bucket"),
+          title = div(
+            span("📦", style = "margin-right: 5px;"),
+            "4. Pseudo Bulk Analysis"
+          ),
+          value = "subtab_pseudo_bulk",
+          icon = icon("layer-group"),
+          
+          div(class = "step-header", style = "background: linear-gradient(135deg, #e0f2f1, #e8f5e8); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
+            h5("Step 4: Aggregate Single Cells for Bulk-like Analysis", style = "margin: 0; color: #00796b;"),
+            p("Convert single-cell data to pseudo-bulk samples for robust differential expression analysis using DESeq2.", 
+              style = "margin: 5px 0 0 0; font-size: 0.9rem; color: #666;")
+          ),
+          
           hr(),
           sidebarLayout(
             sidebarPanel(width = 2,
@@ -753,6 +851,15 @@ ui <- fluidPage(
 
 
 server <- function(input, output,session) {
+  
+  # Navigation depuis la page d'accueil
+  observeEvent(input$go_to_explore, {
+    updateTabsetPanel(session, "navbar", selected = "tab_explore_datasets")
+  })
+  
+  observeEvent(input$go_to_correlations, {
+    updateTabsetPanel(session, "navbar", selected = "tab_correlation")
+  })
   
   ##################################### Import Dataset
   

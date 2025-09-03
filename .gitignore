@@ -17,6 +17,30 @@ tmp/
 .DS_Store
 Thumbs.db
 
+# Development and backup files
+*.bak
+*.backup
+*_backup
+test_*.R
+archived/development_files/
+logs/*.log
+logs/*.json
+backups/*.tar.gz
+
+# Documentation temporaire
+IMPROVEMENT_*.md
+INTERFACE_*.md
+SUCCESS_*.md
+TEST_*.md
+*_SUMMARY.md
+
+# Scripts temporaires
+apply_*.sh
+finalize_*.sh
+cleanup_*.sh
+monitor_*.sh
+clean_project.sh
+
 # R specific
 .Rhistory
 .RData

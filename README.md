@@ -20,6 +20,23 @@ This Shiny application provides an interactive interface for exploring and analy
 
 ## Installation
 
+### Quick Start with Docker (Recommended)
+
+1. Clone this repository:
+```bash
+git clone https://github.com/yourusername/MASLDatlas.git
+cd MASLDatlas
+```
+
+2. Start the application:
+```bash
+docker-compose up -d
+```
+
+3. Access the application at http://localhost:3838
+
+### Manual Installation
+
 1. Clone this repository:
 ```bash
 git clone https://github.com/yourusername/MASLDatlas.git
@@ -583,6 +600,41 @@ datasets/
   ```bash
   docker run -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -p 3838:3838 masldatlas-app
   ```
+
+## Maintenance
+
+### Project Structure
+
+The project has been organized with a clean structure. See `PROJECT_STRUCTURE.md` for a complete overview of the file organization.
+
+### Maintenance Scripts
+
+For routine maintenance, use the provided script:
+
+```bash
+# Clean temporary files
+./scripts/maintenance.sh clean
+
+# Clean old logs
+./scripts/maintenance.sh logs
+
+# Clean Docker resources
+./scripts/maintenance.sh docker
+
+# Run all maintenance tasks
+./scripts/maintenance.sh all
+```
+
+### Archived Files
+
+Development and temporary files are automatically archived in the `archived/` directory to keep the project clean while preserving important documentation.
+
+### Project Health Check
+
+- **Size monitoring**: The project should remain under 3GB (excluding large datasets)
+- **Log rotation**: Logs older than 7 days are automatically cleaned
+- **Backup management**: Only the 3 most recent backups are kept
+- **Docker cleanup**: Unused Docker resources are cleaned during maintenance
 
 ## License
 

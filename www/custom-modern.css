@@ -8,16 +8,45 @@
   --border-radius: 8px;
   --shadow: 0 2px 10px rgba(0,0,0,0.1);
   --transition: all 0.3s ease;
+  
+  /* Responsive breakpoints */
+  --mobile: 768px;
+  --tablet: 1024px;
 }
 
-/* Navbar améliorée - Force full width */
+/* Navbar améliorée - Force full viewport width breakout */
 .navbar {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
   border: none !important;
   box-shadow: var(--shadow) !important;
-  width: 100% !important;
-  margin: 0 !important;
+  width: 100vw !important;
+  left: 0 !important;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
   padding: 1rem !important;
+  border-radius: 0 !important;
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+.navbar > .container-fluid {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+  margin: 0 !important;
+}
+
+/* Remove any padding/margin from body that could affect navbar */
+body .container-fluid {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Specific override for navbar container only */
+body > .container-fluid {
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .navbar-brand {
@@ -31,6 +60,7 @@
   font-weight: 500 !important;
   padding: 8px 16px !important;
   transition: var(--transition) !important;
+  font-size: 0.95rem !important;
 }
 
 .navbar-nav .nav-link:hover,
@@ -48,7 +78,7 @@ li[data-value='tab_workflow'] {
 
 /* Container full width - Force container width */
 body, html {
-  width: 100% !important;
+  width: 100vw !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow-x: hidden !important;
@@ -57,184 +87,235 @@ body, html {
 .container-fluid {
   padding: 0 !important;
   margin: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
 }
 
 .tab-content,
 .tab-pane {
-  width: 100% !important;
-  max-width: 100% !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
   padding-left: 15px !important;
   padding-right: 15px !important;
 }
 
-/* Bootstrap container overrides for full width */
+/* Bootstrap container overrides for full viewport width */
 .container, .container-fluid {
-  width: 100% !important;
-  max-width: 100% !important;
-  padding-left: 15px !important;
-  padding-right: 15px !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-/* Navbar container full width */
-.navbar > .container-fluid {
-  width: 100% !important;
-  max-width: 100% !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
   padding-left: 15px !important;
   padding-right: 15px !important;
 }
 
-/* Amélioration des cartes */
-.card {
-  border: none !important;
-  border-radius: var(--border-radius) !important;
-  box-shadow: var(--shadow) !important;
-  margin-bottom: 1.5rem !important;
-  overflow: hidden !important;
-  transition: var(--transition) !important;
-}
-
-.card:hover {
-  transform: translateY(-5px) !important;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.15) !important;
-}
-
-.card-header {
-  background: linear-gradient(135deg, #f8f9fa 0%, #bdc3c7 100%) !important;
-  border-bottom: 1px solid #ddd !important;
-  font-weight: bold !important;
-  color: var(--primary-color) !important;
-}
-
-/* Amélioration des boutons */
+/* Buttons et inputs améliorés */
 .btn {
   border-radius: var(--border-radius) !important;
-  padding: 0.75rem 1.5rem !important;
   font-weight: 500 !important;
   transition: var(--transition) !important;
   border: none !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
+  box-shadow: var(--shadow) !important;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--secondary-color) 0%, #2980b9 100%) !important;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
   color: white !important;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #2980b9 0%, var(--secondary-color) 100%) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4) !important;
+  background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
 }
 
-/* Hero section */
-.hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+.btn-success {
+  background: var(--success-color) !important;
   color: white !important;
-  padding: 3rem !important;
-  border-radius: var(--border-radius) !important;
-  margin: 2rem 0 !important;
-  text-align: center !important;
 }
 
-.hero-section h1,
-.hero-section .display-4 {
-  font-size: 2.5rem !important;
-  font-weight: bold !important;
+.btn-warning {
+  background: var(--warning-color) !important;
+  color: white !important;
+}
+
+.btn-danger {
+  background: var(--accent-color) !important;
+  color: white !important;
+}
+
+/* Amélioration des formulaires */
+.form-control,
+.selectize-input,
+.selectize-control.single .selectize-input {
+  border-radius: var(--border-radius) !important;
+  border: 2px solid #e9ecef !important;
+  transition: var(--transition) !important;
+}
+
+.form-control:focus,
+.selectize-input.focus,
+.selectize-control.single .selectize-input.focus {
+  border-color: var(--secondary-color) !important;
+  box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25) !important;
+}
+
+/* Cards et panels */
+.well,
+.panel,
+.card {
+  border-radius: var(--border-radius) !important;
+  border: none !important;
+  box-shadow: var(--shadow) !important;
+  background: white !important;
   margin-bottom: 1rem !important;
 }
 
-.hero-section .lead {
-  font-size: 1.2rem !important;
-  margin-bottom: 2rem !important;
-}
-
-/* Sidebar amélioré */
-.sidebar {
-  background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%) !important;
+/* Tables */
+.table {
   border-radius: var(--border-radius) !important;
-  padding: 1.5rem !important;
+  overflow: hidden !important;
   box-shadow: var(--shadow) !important;
 }
 
-/* Visualisations */
-.visualization-container {
-  background: white !important;
-  border-radius: var(--border-radius) !important;
-  padding: 15px !important;
-  box-shadow: var(--shadow) !important;
-  margin-bottom: 20px !important;
+.table thead th {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
 }
 
-.plot-title {
-  font-size: 1.1rem !important;
-  font-weight: bold !important;
+/* Tabs pills améliorés */
+.nav-pills .nav-link {
+  border-radius: var(--border-radius) !important;
+  margin-right: 0.5rem !important;
+  font-weight: 500 !important;
+  transition: var(--transition) !important;
+  border: 2px solid transparent !important;
+}
+
+.nav-pills .nav-link:not(.active) {
   color: var(--primary-color) !important;
-  margin-bottom: 10px !important;
-  text-align: center !important;
+  background-color: #f8f9fa !important;
+  border-color: #e9ecef !important;
 }
 
-/* Status et Indicateurs */
-.status-available { 
-  color: var(--success-color) !important; 
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+  color: white !important;
+  border-color: var(--secondary-color) !important;
+  box-shadow: var(--shadow) !important;
 }
 
-.status-optional { 
-  color: var(--warning-color) !important; 
+.nav-pills .nav-link:hover:not(.active) {
+  background-color: #e9ecef !important;
+  border-color: var(--secondary-color) !important;
+  transform: translateY(-1px) !important;
 }
 
-.status-loading { 
-  color: var(--secondary-color) !important; 
+/* Améliorations pour les headers d'étapes */
+.tab-description {
+  animation: fadeInUp 0.5s ease-out !important;
 }
 
-/* Animations */
-.fade-in { 
-  animation: fadeIn 0.5s ease-in !important; 
+.step-header {
+  animation: slideInLeft 0.3s ease-out !important;
+  border: 1px solid rgba(255,255,255,0.3) !important;
+  backdrop-filter: blur(5px) !important;
 }
 
-@keyframes fadeIn { 
-  from { 
-    opacity: 0; 
-    transform: translateY(20px); 
-  } 
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  } 
+.step-header h5 {
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
-.shadow-hover { 
-  transition: var(--transition) !important; 
+.step-header p {
+  opacity: 0.8 !important;
 }
 
-.shadow-hover:hover {
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-  transform: translateY(-3px) !important;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .sidebar { 
-    margin-bottom: 20px !important; 
+/* Animations CSS */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
-  .hero-section h1,
-  .hero-section .display-4 { 
-    font-size: 2rem !important; 
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  .btn { 
-    padding: 0.6rem 1.2rem !important; 
-    font-size: 0.9rem !important; 
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
   }
-  
-  .navbar { 
-    padding: 0.5rem !important; 
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
+}
+
+/* Amélioration des onglets avec numérotation */
+.nav-pills .nav-link div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.nav-pills .nav-link span {
+  margin-right: 5px !important;
+  font-size: 1.1em !important;
+}
+
+/* Spinners et loading */
+.spinner-border {
+  color: var(--secondary-color) !important;
+}
+
+/* Amélioration des tooltips */
+.tooltip-inner {
+  background-color: var(--primary-color) !important;
+  border-radius: var(--border-radius) !important;
+  font-size: 0.8rem !important;
+}
+
+/* Sidebar améliorée */
+.analysis-sidebar {
+  background: #f8f9fa !important;
+  border-radius: var(--border-radius) !important;
+  padding: 1rem !important;
+  box-shadow: var(--shadow) !important;
+  border: 1px solid #e9ecef !important;
+}
+
+.sidebar-section {
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.sidebar-section:not(:last-child) {
+  border-bottom: 1px solid #e9ecef !important;
+}
+
+.sidebar-action {
+  margin-top: 1.5rem !important;
+  padding-top: 1rem !important;
+  border-top: 2px solid var(--secondary-color) !important;
+}
+
+.help-text {
+  font-size: 0.8rem !important;
+  padding: 8px !important;
+  border-radius: 4px !important;
+  margin-top: 8px !important;
+  border-left: 3px solid var(--warning-color) !important;
+}
+
+/* Button block responsive */
+.btn-block {
+  display: block !important;
+  width: 100% !important;
 }
 
 /* Force full width for all main containers */
@@ -247,7 +328,292 @@ body > div.container-fluid,
 
 /* Ensure navbar spans full width */
 .navbar > .container-fluid {
-  max-width: 100% !important;
-  padding-left: 15px !important;
-  padding-right: 15px !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  padding: 0 15px !important;
+}
+
+/* ===== RESPONSIVE DESIGN - AMÉLIORATIONS POUR PETITS ÉCRANS ===== */
+
+/* Mobile First - Améliorer l'expérience sur petits écrans */
+@media (max-width: 768px) {
+  /* Navbar responsive */
+  .navbar {
+    padding: 0.5rem !important;
+  }
+  
+  .navbar-brand {
+    font-size: 1.1rem !important;
+  }
+  
+  .navbar-nav .nav-link {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Boutons plus petits sur mobile */
+  .btn {
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.8rem !important;
+    margin: 2px !important;
+    min-height: 36px !important;
+  }
+  
+  .btn-sm {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.75rem !important;
+    min-height: 32px !important;
+  }
+  
+  /* Action buttons optimisés */
+  .action-button,
+  .btn-primary {
+    line-height: 1.2 !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Radio Group Buttons plus compacts */
+  .radio-group-buttons .btn {
+    padding: 0.35rem 0.7rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Sidebar plus étroit sur mobile */
+  .col-sm-2 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 1rem !important;
+    padding: 0 10px !important;
+  }
+  
+  /* Sidebar sections compactes sur mobile */
+  .analysis-sidebar {
+    padding: 0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .sidebar-section {
+    margin-bottom: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .sidebar-action {
+    margin-top: 1rem !important;
+    padding-top: 0.75rem !important;
+  }
+  
+  /* Main panel pleine largeur sur mobile */
+  .col-sm-8, .col-sm-10 {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 10px !important;
+  }
+  
+  /* Colonnes empilées sur mobile */
+  .col-sm-6, .col-md-6, .col-lg-6 {
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+    padding: 0 5px !important;
+  }
+  
+  /* Input controls plus lisibles */
+  .form-control, .selectize-input {
+    font-size: 0.9rem !important;
+    padding: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  /* Tabs plus compacts */
+  .nav-pills .nav-link {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    margin: 0 1px 4px 0 !important;
+    display: inline-block !important;
+  }
+  
+  .nav-pills {
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+  }
+  
+  /* Images et plots responsive */
+  #imageoutput_UMAP,
+  #imageoutput_UMAP_selection,
+  #imageoutput_CellType_groups,
+  .shiny-image-output {
+    max-width: 100% !important;
+    height: auto !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Tables responsive */
+  .dataTables_wrapper {
+    font-size: 0.8rem !important;
+    overflow-x: auto !important;
+  }
+  
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .dataTables_wrapper table {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Améliorer l'espacement */
+  .sidebarLayout {
+    margin: 0 !important;
+  }
+  
+  hr {
+    margin: 0.5rem 0 !important;
+  }
+  
+  /* Réduire les marges générales */
+  .tab-content {
+    padding: 0.5rem !important;
+  }
+  
+  .tab-pane {
+    padding: 0.5rem !important;
+  }
+  
+  /* Containers plus compacts */
+  .container-fluid {
+    padding: 0 10px !important;
+  }
+  
+  /* Fluidrow spacing */
+  .row {
+    margin: 0 -5px !important;
+  }
+  
+  .row > div {
+    padding: 0 5px !important;
+  }
+}
+
+/* Tablette - Écrans moyens */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar {
+    padding: 0.7rem !important;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .navbar-nav .nav-link {
+    padding: 6px 14px !important;
+    font-size: 0.9rem !important;
+  }
+  
+  /* Sidebar responsive */
+  .col-sm-2 {
+    width: 25% !important;
+  }
+  
+  .col-sm-8 {
+    width: 75% !important;
+  }
+  
+  .col-sm-6 {
+    width: 50% !important;
+  }
+}
+
+/* Desktop - Écrans larges */
+@media (min-width: 1025px) {
+  /* Styles par défaut - optimisations légères */
+  .container-fluid {
+    padding: 0 1rem !important;
+  }
+  
+  .btn {
+    padding: 0.6rem 1.2rem !important;
+  }
+}
+
+/* Améliorer les tooltips et modals sur mobile */
+@media (max-width: 768px) {
+  .tooltip {
+    font-size: 0.8rem !important;
+  }
+  
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100% - 1rem) !important;
+  }
+  
+  .modal-body {
+    padding: 1rem !important;
+  }
+  
+  /* Selectize responsive */
+  .selectize-control {
+    width: 100% !important;
+  }
+  
+  .selectize-dropdown {
+    max-height: 200px !important;
+    font-size: 0.85rem !important;
+  }
+  
+  /* Radio buttons responsive */
+  .radio-group-buttons {
+    width: 100% !important;
+  }
+  
+  .radio-group-buttons .btn-group {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 2px !important;
+  }
+  
+  .radio-group-buttons .btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 0.75rem !important;
+    padding: 0.4rem 0.5rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  /* Amélioration pour les boutons justifiés */
+  .radio-group-buttons .btn-group-justified .btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* Améliorations spécifiques pour les petits écrans */
+@media (max-width: 480px) {
+  .navbar-brand {
+    font-size: 1rem !important;
+  }
+  
+  .navbar-nav .nav-link {
+    font-size: 0.7rem !important;
+    padding: 4px 8px !important;
+  }
+  
+  .btn {
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.6rem !important;
+  }
+  
+  .container-fluid {
+    padding: 0 5px !important;
+  }
+  
+  .nav-pills .nav-link {
+    font-size: 0.7rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
 }
