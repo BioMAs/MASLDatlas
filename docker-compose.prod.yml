@@ -1,66 +1,77 @@
 version: '3.8'
 
 services:
+  # 🚀 MASLDatlas Application - Production Optimized
   masldatlas:
     build:
       context: .
       dockerfile: Dockerfile
-    image: masldatlas-app:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: masldatlas:production
     container_name: masldatlas-prod
     restart: unless-stopped
     
-    # Resource limits for production
+    # 🚀 Optimized Resource limits for production
     deploy:
       resources:
         limits:
-          memory: 4G
-          cpus: '2.0'
+          memory: 8G
+          cpus: '4.0'
         reservations:
           memory: 2G
           cpus: '1.0'
     
-    # Environment variables
+    # 🚀 Production Environment variables with optimizations
     environment:
       - SHINY_HOST=0.0.0.0
       - SHINY_PORT=3838
-      - R_LIBS_USER=/app/rlibs
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8
-      # Dataset download options
+      
+      # 🚀 Performance Optimizations
+      - R_MAX_VSIZE=8Gb
+      - R_MAX_NUM_DLLS=200
+      - MASLDATLAS_CACHE_DIR=/app/cache
+      - MASLDATLAS_MONITORING_ENABLED=true
+      - MASLDATLAS_LOG_LEVEL=INFO
+      
+      # Production settings
       - AUTO_DOWNLOAD_DATASETS=true
       - SKIP_DATASET_CHECK=false
     
-    # Port mapping
-    ports:
-      - "3838:3838"
-    
-    # Volume mounts for persistent data
+    # 🚀 Optimized Volume mounts
     volumes:
       - ./datasets:/app/datasets:ro
       - ./enrichment_sets:/app/enrichment_sets:ro
       - ./config/datasets_config.json:/app/config/datasets_config.json:ro
       - ./config/datasets_sources.json:/app/config/datasets_sources.json:ro
-      - masldatlas_cache:/app/app_cache
-      - masldatlas_logs:/app/logs
+      # 🚀 Performance modules
+      - ./R:/app/R:ro
+      - ./scripts/setup:/app/scripts/setup:ro
+      # Cache volume
+      - masldatlas_cache:/app/cache
     
-    # Health check with improved monitoring
+    # 🚀 Enhanced Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3838/"] 
+      test: ["CMD", "curl", "-f", "http://localhost:3838"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 5
       start_period: 120s
     
-    # Security settings
+    # 🔒 Security settings
     security_opt:
       - no-new-privileges:true
-    read_only: false  # Shiny needs write access for temporary files
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=1G
     
-    # Traefik labels for reverse proxy configuration
+    # 🚀 tmpfs for performance
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=2G
+      - /app/cache/temp:rw,noexec,nosuid,size=1G
+    
+    # 🚀 Enhanced Traefik labels for production
     labels:
-      # Enable Traefik for this service
+      # Enable Traefik
       - "traefik.enable=true"
       
       # Router configuration
@@ -71,65 +82,42 @@ services:
       
       # Service configuration
       - "traefik.http.services.masldatlas.loadbalancer.server.port=3838"
-      - "traefik.http.services.masldatlas.loadbalancer.server.scheme=http"
       
-      # Health check configuration
-      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.path=/"
-      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.interval=30s"
-      - "traefik.http.services.masldatlas.loadbalancer.healthcheck.timeout=10s"
+      # Middleware for performance and security
+      - "traefik.http.routers.masldatlas.middlewares=masldatlas-headers,masldatlas-compress"
       
-      # Middleware for security headers
-      - "traefik.http.routers.masldatlas.middlewares=masldatlas-headers,masldatlas-ratelimit"
-      
-      # Security headers middleware
-      - "traefik.http.middlewares.masldatlas-headers.headers.customRequestHeaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.masldatlas-headers.headers.customRequestHeaders.X-Forwarded-For="
+      # Security headers
       - "traefik.http.middlewares.masldatlas-headers.headers.SSLRedirect=true"
       - "traefik.http.middlewares.masldatlas-headers.headers.STSSeconds=31536000"
-      - "traefik.http.middlewares.masldatlas-headers.headers.STSIncludeSubdomains=true"
-      - "traefik.http.middlewares.masldatlas-headers.headers.STSPreload=true"
-      - "traefik.http.middlewares.masldatlas-headers.headers.forceSTSHeader=true"
       - "traefik.http.middlewares.masldatlas-headers.headers.contentTypeNosniff=true"
       - "traefik.http.middlewares.masldatlas-headers.headers.browserXSSFilter=true"
-      - "traefik.http.middlewares.masldatlas-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
-      - "traefik.http.middlewares.masldatlas-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()"
       
-      # Rate limiting middleware
-      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.average=100"
-      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.burst=200"
-      - "traefik.http.middlewares.masldatlas-ratelimit.ratelimit.period=1m"
+      # Compression for performance
+      - "traefik.http.middlewares.masldatlas-compress.compress=true"
       
-      # Optional: HTTP to HTTPS redirect
+      # HTTP to HTTPS redirect
       - "traefik.http.routers.masldatlas-http.rule=Host(`masldatlas.scilicium.com`)"
       - "traefik.http.routers.masldatlas-http.entrypoints=web"
-      - "traefik.http.routers.masldatlas-http.middlewares=masldatlas-redirect"
-      - "traefik.http.middlewares.masldatlas-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.masldatlas-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.masldatlas-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
     
     # Network configuration
     networks:
       - web
-      - masldatlas-internal
     
-    # Logging configuration
+    # 🚀 Optimized Logging
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
+        max-size: "50m"
         max-file: "3"
-        labels: "service=masldatlas"
 
-# Network definitions
+# 🚀 Network definitions
 networks:
   web:
-    external: true  # Réseau Traefik externe pour la production
-  masldatlas-internal:
-    driver: bridge
-    internal: true
+    external: true
 
-# Volume definitions
+# 🚀 Volume definitions  
 volumes:
   masldatlas_cache:
-    driver: local
-  masldatlas_logs:
     driver: local

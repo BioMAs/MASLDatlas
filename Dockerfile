@@ -46,6 +46,22 @@ ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 COPY scripts/setup/install_optional_packages.R /tmp/install_optional_packages.R
 RUN conda run -n $CONDA_ENV Rscript /tmp/install_optional_packages.R || echo "Optional packages installation completed with warnings"
 
+# 🚀 PERFORMANCE OPTIMIZATION: Copy optimization modules early for better build caching
+COPY R/ /app/R/
+COPY scripts/setup/performance_robustness_setup.R /app/scripts/setup/performance_robustness_setup.R
+COPY scripts/testing/test_optimizations.R /app/scripts/testing/test_optimizations.R
+
+# 🚀 PERFORMANCE: Pre-test optimization system during build
+RUN conda run -n $CONDA_ENV Rscript -e "
+  setwd('/app'); 
+  tryCatch({
+    source('scripts/setup/performance_robustness_setup.R');
+    cat('✅ Optimization system validated in Docker\n')
+  }, error = function(e) {
+    cat('⚠️ Optimization system will be loaded at runtime\n')
+  })
+" || echo "Optimization pre-test completed"
+
 # Copy dataset management files (for runtime use, not build time)
 COPY scripts/dataset-management/download_datasets.py /app/scripts/dataset-management/download_datasets.py
 COPY config/datasets_sources.json /app/config/datasets_sources.json

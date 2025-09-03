@@ -1,12 +1,14 @@
-# Docker ignore file for MASLDatlas
+# MASLDatlas Docker Ignore File - Optimized for Performance
 
-# Git
+# Version control
 .git
 .gitignore
+.gitattributes
 
-# Documentation
-README.md
+# Documentation (exclude from container but keep essentials)
 *.md
+!README.md
+!docs/optimization-guide.md
 
 # Development files
 .vscode/
@@ -14,7 +16,7 @@ README.md
 *.swp
 *.swo
 
-# R specific
+# R specific - 🚀 OPTIMIZATION: Exclude temp files but keep optimization modules
 .Rhistory
 .RData
 .Rapp.history

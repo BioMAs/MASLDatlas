@@ -11,10 +11,30 @@ services:
       - ./config/datasets_sources.json:/app/config/datasets_sources.json
       - ./enrichment_sets:/app/enrichment_sets
       - ./www:/app/www
+      # 🚀 OPTIMIZATIONS: Mount optimization modules for development
+      - ./R:/app/R
+      - ./scripts/setup:/app/scripts/setup
     environment:
       - SHINY_PORT=3838
       - SHINY_HOST=0.0.0.0
       - SKIP_DATASET_CHECK=true
+      # 🚀 PERFORMANCE: Basic optimizations for local development
+      - R_MAX_VSIZE=4Gb
+      - MASLDATLAS_CACHE_DIR=/app/cache
+      - MASLDATLAS_MONITORING_ENABLED=true
+    # 🚀 PERFORMANCE: Reasonable resource limits for local dev
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    # 🚀 PERFORMANCE: tmpfs for cache in local development
+    tmpfs:
+      - /tmp:noexec,nosuid,size=1g
+      - /app/cache:noexec,nosuid,size=500m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3838"]

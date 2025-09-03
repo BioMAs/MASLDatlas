@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'masldatlas-monitor'
+    environment: 'production'
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # MASLDatlas application monitoring
+  - job_name: 'masldatlas-app'
+    static_configs:
+      - targets: ['masldatlas:3838']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    timeout: 10s
+    honor_labels: true
+    params:
+      format: ['prometheus']
+
+  # Redis cache monitoring
+  - job_name: 'redis-cache'
+    static_configs:
+      - targets: ['redis-cache-ultra:6379']
+    scrape_interval: 15s
+    timeout: 5s
+
+  # Docker container monitoring (if cAdvisor is available)
+  - job_name: 'docker-containers'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    honor_labels: true
+
+  # Node exporter for system metrics (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Optional: Add recording rules for MASLDatlas specific metrics
+# rule_files:
+#   - "masldatlas_rules.yml"

@@ -27,6 +27,8 @@ if (!requireNamespace("shinydisconnect", quietly = TRUE)) {
 library(stringr)
 library(jsonlite)
 
+source('scripts/setup/performance_robustness_setup.R')
+
 # Configure Python environment for reticulate
 tryCatch({
   # Check if we're in a conda environment
@@ -919,14 +921,29 @@ server <- function(input, output,session) {
       showNotification("❌ Please select a valid organism and dataset", type = "error")
       return(NULL)
     }
-    
+
     # Check if dataset name indicates unavailability
     if (grepl("No datasets available|Error|Contact admin|Status:", input$selection_dataset, ignore.case = TRUE)) {
       showNotification("❌ This dataset is not currently available", type = "error", duration = 10)
       return(NULL)
     }
+
+    # ⚡ OPTIMIZATION: Check cache first for faster loading
+    cache_key <- paste(input$selection_organism, input$selection_dataset, 
+                      input$dataset_size_option %||% "full", sep = "_")
     
-    # Use validation function to check dataset path
+    if (exists("get_cached_dataset", mode = "function")) {
+      cached_data <- get_cached_dataset(cache_key)
+      if (!is.null(cached_data)) {
+        showNotification("✅ Dataset loaded from cache (fast loading enabled)", type = "message")
+        
+        # Update UI immediately 
+        shinyjs::disable("import_dataset")
+        updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
+        
+        return(cached_data)
+      }
+    }    # Use validation function to check dataset path
     dataset_info <- validate_dataset_path(input$selection_organism, input$selection_dataset)
     
     # Check if dataset file exists before proceeding
@@ -1001,17 +1018,39 @@ server <- function(input, output,session) {
     
     progress$set(value = 0.3, detail = "Reading file...")
     
+    # ⚡ PERFORMANCE: Start monitoring for this operation
+    if (exists("monitor_execution", mode = "function")) {
+      operation_id <- monitor_execution("dataset_loading", "start")
+    }
+    
     tryCatch({
-      # Import with error handling
-      adata <- sc$read_h5ad(dataset_path)
+      # ⚡ OPTIMIZATION: Use optimized dataset loading if available
+      if (exists("load_dataset_optimized", mode = "function")) {
+        showNotification("🚀 Using optimized loading engine...", type = "message")
+        adata <- load_dataset_optimized(dataset_path, progress)
+      } else {
+        # Fallback to standard loading
+        adata <- sc$read_h5ad(dataset_path)
+      }
       
       progress$set(value = 0.8, detail = "Processing metadata...")
+      
+      # ⚡ CACHE: Store in cache for faster future access
+      if (exists("cache_dataset", mode = "function") && !is.null(adata)) {
+        cache_dataset(cache_key, adata)
+        showNotification("💾 Dataset cached for faster future loading", type = "message")
+      }
       
       # Disable the button
       shinyjs::disable("import_dataset")
       updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
       
       progress$set(value = 1, detail = "Complete!")
+      
+      # ⚡ MONITORING: Log successful operation
+      if (exists("monitor_execution", mode = "function")) {
+        monitor_execution("dataset_loading", "success", operation_id)
+      }
       
       showNotification(
         paste("✅ Dataset loaded successfully:", 
@@ -1025,6 +1064,23 @@ server <- function(input, output,session) {
       
     }, error = function(e) {
       progress$close()
+      
+      # ⚡ MONITORING: Log failed operation
+      if (exists("monitor_execution", mode = "function")) {
+        monitor_execution("dataset_loading", "error", operation_id, error_msg = e$message)
+      }
+      
+      # ⚡ ENHANCED ERROR HANDLING: Use fallback strategies if available
+      if (exists("load_dataset_with_fallbacks", mode = "function")) {
+        showNotification("🔄 Trying alternative loading methods...", type = "warning")
+        
+        fallback_result <- load_dataset_with_fallbacks(dataset_path)
+        if (!is.null(fallback_result)) {
+          showNotification("✅ Dataset loaded using fallback method", type = "message")
+          return(fallback_result)
+        }
+      }
+      
       showNotification(
         paste("❌ Error loading dataset:", e$message),
         type = "error",
@@ -1798,8 +1854,33 @@ server <- function(input, output,session) {
     
     
     correlation_table_first_gene <- eventReactive(input$top_correlated_first_gene,{
+      
+      # ⚡ PERFORMANCE: Start monitoring for correlation analysis
+      if (exists("monitor_execution", mode = "function")) {
+        operation_id <- monitor_execution("correlation_analysis", "start")
+      }
+      
       if(is.null(input$filter_dataset_cluster_selection)){
         
+      # ⚡ OPTIMIZATION: Use optimized correlation analysis if available
+      if (exists("calculate_correlations_optimized", mode = "function")) {
+        showNotification("🚀 Using optimized correlation engine...", type = "message", duration = 3)
+        
+        result <- calculate_correlations_optimized(
+          adata = adata(),
+          gene_name = input$gene_selection_cluster_coexpression_first,
+          method = tolower(input$test_choice),
+          max_genes = 1000
+        )
+        
+        if (exists("monitor_execution", mode = "function")) {
+          monitor_execution("correlation_analysis", "success", operation_id)
+        }
+        
+        return(result)
+      }
+      
+      # Standard fallback method
       normalized_counts <- as.matrix(adata()$X)
       normalized_counts <- as.data.frame(normalized_counts)
       colnames(normalized_counts) <- gene_list_adata()
@@ -1888,8 +1969,33 @@ server <- function(input, output,session) {
     
     
     correlation_table_second_gene <- eventReactive(input$top_correlated_second_gene,{
+      
+      # ⚡ PERFORMANCE: Start monitoring for correlation analysis
+      if (exists("monitor_execution", mode = "function")) {
+        operation_id <- monitor_execution("correlation_analysis_second", "start")
+      }
+      
       if(is.null(input$filter_dataset_cluster_selection)){
         
+      # ⚡ OPTIMIZATION: Use optimized correlation analysis if available
+      if (exists("calculate_correlations_optimized", mode = "function")) {
+        showNotification("🚀 Using optimized correlation engine...", type = "message", duration = 3)
+        
+        result <- calculate_correlations_optimized(
+          adata = adata(),
+          gene_name = input$gene_selection_cluster_coexpression_second,
+          method = tolower(input$test_choice),
+          max_genes = 1000
+        )
+        
+        if (exists("monitor_execution", mode = "function")) {
+          monitor_execution("correlation_analysis_second", "success", operation_id)
+        }
+        
+        return(result)
+      }
+      
+      # Standard fallback method
       normalized_counts <- as.matrix(adata()$X)
       normalized_counts <- as.data.frame(normalized_counts)
       colnames(normalized_counts) <- gene_list_adata()
