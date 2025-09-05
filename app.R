@@ -27,8 +27,6 @@ if (!requireNamespace("shinydisconnect", quietly = TRUE)) {
 library(stringr)
 library(jsonlite)
 
-source('scripts/setup/performance_robustness_setup.R')
-
 # Configure Python environment for reticulate
 tryCatch({
   # Check if we're in a conda environment
@@ -328,9 +326,7 @@ ui <- fluidPage(
         span("📊", style = "margin-right: 5px;"),
         "Explore & Analyze Datasets"
       ),
-      value = "tab_explore_datasets",
-      icon = icon("chart-bar"),
-      
+      value = "tab_explore_datasets",      
       # Ajout d'une description de l'onglet
       div(class = "tab-description", style = "background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3498db;",
         h4("🔬 Single-cell RNA-seq Data Analysis Pipeline", style = "margin-top: 0; color: #2c3e50;"),
@@ -348,7 +344,6 @@ ui <- fluidPage(
             "1. Import Dataset"
           ),
           value = "subtab_import_dataset",
-          icon = icon("database"),
           
           div(class = "step-header", style = "background: linear-gradient(135deg, #e8f5e8, #f0f8ff); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
             h5("Step 1: Load and Visualize Your Dataset", style = "margin: 0; color: #27ae60;"),
@@ -392,7 +387,7 @@ ui <- fluidPage(
               div(class = "sidebar-action",
                 actionButton("import_dataset", 
                            class = "btn-primary btn-block", 
-                           "🚀 Load Dataset", 
+                           "Load Dataset", 
                            width = '100%')
               )
             ),
@@ -437,8 +432,6 @@ ui <- fluidPage(
             "2. Cluster Selection"
           ),
           value = "subtab_cluster_selection",
-          icon = icon("bullseye"),
-          
           div(class = "step-header", style = "background: linear-gradient(135deg, #fff3e0, #e8f5e8); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
             h5("Step 2: Select and Analyze Cell Clusters", style = "margin: 0; color: #f39c12;"),
             p("Choose specific cell clusters for detailed analysis. Visualize gene expression patterns and co-expression relationships.", 
@@ -590,9 +583,7 @@ ui <- fluidPage(
             span("📊", style = "margin-right: 5px;"),
             "3. Differential Expression"
           ),
-          value = "subtab_differential_expression",
-          icon = icon("chart-line"),
-          
+          value = "subtab_differential_expression",          
           div(class = "step-header", style = "background: linear-gradient(135deg, #fce4ec, #f3e5f5); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
             h5("Step 3: Compare Gene Expression Between Conditions", style = "margin: 0; color: #e91e63;"),
             p("Perform differential gene expression analysis between clusters or groups. Generate volcano plots and identify key biomarkers.", 
@@ -727,9 +718,7 @@ ui <- fluidPage(
             span("📦", style = "margin-right: 5px;"),
             "4. Pseudo Bulk Analysis"
           ),
-          value = "subtab_pseudo_bulk",
-          icon = icon("layer-group"),
-          
+          value = "subtab_pseudo_bulk",          
           div(class = "step-header", style = "background: linear-gradient(135deg, #e0f2f1, #e8f5e8); padding: 10px; margin-bottom: 15px; border-radius: 6px;",
             h5("Step 4: Aggregate Single Cells for Bulk-like Analysis", style = "margin: 0; color: #00796b;"),
             p("Convert single-cell data to pseudo-bulk samples for robust differential expression analysis using DESeq2.", 
@@ -1018,39 +1007,17 @@ server <- function(input, output,session) {
     
     progress$set(value = 0.3, detail = "Reading file...")
     
-    # ⚡ PERFORMANCE: Start monitoring for this operation
-    if (exists("monitor_execution", mode = "function")) {
-      operation_id <- monitor_execution("dataset_loading", "start")
-    }
-    
     tryCatch({
-      # ⚡ OPTIMIZATION: Use optimized dataset loading if available
-      if (exists("load_dataset_optimized", mode = "function")) {
-        showNotification("🚀 Using optimized loading engine...", type = "message")
-        adata <- load_dataset_optimized(dataset_path, progress)
-      } else {
-        # Fallback to standard loading
-        adata <- sc$read_h5ad(dataset_path)
-      }
+      # Standard dataset loading
+      adata <- sc$read_h5ad(dataset_path)
       
       progress$set(value = 0.8, detail = "Processing metadata...")
-      
-      # ⚡ CACHE: Store in cache for faster future access
-      if (exists("cache_dataset", mode = "function") && !is.null(adata)) {
-        cache_dataset(cache_key, adata)
-        showNotification("💾 Dataset cached for faster future loading", type = "message")
-      }
       
       # Disable the button
       shinyjs::disable("import_dataset")
       updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
       
       progress$set(value = 1, detail = "Complete!")
-      
-      # ⚡ MONITORING: Log successful operation
-      if (exists("monitor_execution", mode = "function")) {
-        monitor_execution("dataset_loading", "success", operation_id)
-      }
       
       showNotification(
         paste("✅ Dataset loaded successfully:", 
@@ -1064,22 +1031,6 @@ server <- function(input, output,session) {
       
     }, error = function(e) {
       progress$close()
-      
-      # ⚡ MONITORING: Log failed operation
-      if (exists("monitor_execution", mode = "function")) {
-        monitor_execution("dataset_loading", "error", operation_id, error_msg = e$message)
-      }
-      
-      # ⚡ ENHANCED ERROR HANDLING: Use fallback strategies if available
-      if (exists("load_dataset_with_fallbacks", mode = "function")) {
-        showNotification("🔄 Trying alternative loading methods...", type = "warning")
-        
-        fallback_result <- load_dataset_with_fallbacks(dataset_path)
-        if (!is.null(fallback_result)) {
-          showNotification("✅ Dataset loaded using fallback method", type = "message")
-          return(fallback_result)
-        }
-      }
       
       showNotification(
         paste("❌ Error loading dataset:", e$message),
@@ -1855,33 +1806,10 @@ server <- function(input, output,session) {
     
     correlation_table_first_gene <- eventReactive(input$top_correlated_first_gene,{
       
-      # ⚡ PERFORMANCE: Start monitoring for correlation analysis
-      if (exists("monitor_execution", mode = "function")) {
-        operation_id <- monitor_execution("correlation_analysis", "start")
-      }
-      
       if(is.null(input$filter_dataset_cluster_selection)){
         
-      # ⚡ OPTIMIZATION: Use optimized correlation analysis if available
-      if (exists("calculate_correlations_optimized", mode = "function")) {
-        showNotification("🚀 Using optimized correlation engine...", type = "message", duration = 3)
-        
-        result <- calculate_correlations_optimized(
-          adata = adata(),
-          gene_name = input$gene_selection_cluster_coexpression_first,
-          method = tolower(input$test_choice),
-          max_genes = 1000
-        )
-        
-        if (exists("monitor_execution", mode = "function")) {
-          monitor_execution("correlation_analysis", "success", operation_id)
-        }
-        
-        return(result)
-      }
-      
-      # Standard fallback method
-      normalized_counts <- as.matrix(adata()$X)
+        # Standard correlation analysis
+        normalized_counts <- as.matrix(adata()$X)
       normalized_counts <- as.data.frame(normalized_counts)
       colnames(normalized_counts) <- gene_list_adata()
       first_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_first)]
@@ -1970,36 +1898,13 @@ server <- function(input, output,session) {
     
     correlation_table_second_gene <- eventReactive(input$top_correlated_second_gene,{
       
-      # ⚡ PERFORMANCE: Start monitoring for correlation analysis
-      if (exists("monitor_execution", mode = "function")) {
-        operation_id <- monitor_execution("correlation_analysis_second", "start")
-      }
-      
       if(is.null(input$filter_dataset_cluster_selection)){
         
-      # ⚡ OPTIMIZATION: Use optimized correlation analysis if available
-      if (exists("calculate_correlations_optimized", mode = "function")) {
-        showNotification("🚀 Using optimized correlation engine...", type = "message", duration = 3)
-        
-        result <- calculate_correlations_optimized(
-          adata = adata(),
-          gene_name = input$gene_selection_cluster_coexpression_second,
-          method = tolower(input$test_choice),
-          max_genes = 1000
-        )
-        
-        if (exists("monitor_execution", mode = "function")) {
-          monitor_execution("correlation_analysis_second", "success", operation_id)
-        }
-        
-        return(result)
-      }
-      
-      # Standard fallback method
-      normalized_counts <- as.matrix(adata()$X)
-      normalized_counts <- as.data.frame(normalized_counts)
-      colnames(normalized_counts) <- gene_list_adata()
-      second_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_second)]
+        # Standard correlation analysis
+        normalized_counts <- as.matrix(adata()$X)
+        normalized_counts <- as.data.frame(normalized_counts)
+        colnames(normalized_counts) <- gene_list_adata()
+        second_gene_count <- normalized_counts[,which(gene_list_adata() == input$gene_selection_cluster_coexpression_second)]
       
       # Optimization: Limit to most variable genes for faster computation
       if(ncol(normalized_counts) > 1000) {

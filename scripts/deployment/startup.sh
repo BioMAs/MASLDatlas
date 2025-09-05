@@ -101,23 +101,7 @@ start_shiny() {
         conda activate fibrosis_shiny
     fi
     
-    # 🚀 PERFORMANCE: Pre-test optimization system
-    log_info "⚡ Validating performance optimization system..."
-    if R --slave -e "
-        setwd('/app')
-        tryCatch({
-            source('scripts/setup/performance_robustness_setup.R')
-            cat('✅ Performance optimization system loaded successfully\n')
-            invisible(TRUE)
-        }, error = function(e) {
-            cat('⚠️ Performance optimization system will load at app startup:', e\$message, '\n')
-            invisible(FALSE)
-        })
-    " 2>/dev/null; then
-        log_success "Performance optimizations validated"
-    else
-        log_warning "Performance optimizations will be loaded during app startup"
-    fi
+    log_success "Environment setup completed"
     
     # 🧹 OPTIMIZATION: Clean memory before startup
     log_info "🧹 Optimizing memory before startup..."
@@ -147,7 +131,7 @@ start_shiny() {
             shiny.maxRequestSize = 50*1024^3,  # 50GB for large datasets
             warn = 1,
             error = function(e) {
-                cat('Application Error:', e\$message, '\n')
+                cat('Application Error:', e$message, '\n')
                 traceback()
             }
         )
