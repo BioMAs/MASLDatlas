@@ -902,6 +902,18 @@ server <- function(input, output,session) {
     return(content)
   })
   
+  # Observer to reset the button when user changes organism or dataset selection
+  observe({
+    # When user changes organism or dataset selection, reset the button
+    input$selection_organism
+    input$selection_dataset
+    
+    # Only reset if both selections are made
+    if (!is.null(input$selection_organism) && !is.null(input$selection_dataset)) {
+      shinyjs::enable("import_dataset")
+      updateActionButton(session, "import_dataset", label = "Load Dataset", icon("download"))
+    }
+  })
   
   
   adata <- eventReactive(input$import_dataset, {
@@ -926,9 +938,9 @@ server <- function(input, output,session) {
       if (!is.null(cached_data)) {
         showNotification("✅ Dataset loaded from cache (fast loading enabled)", type = "message")
         
-        # Update UI immediately 
-        shinyjs::disable("import_dataset")
-        updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
+        # Update UI to show dataset is loaded
+        updateActionButton(session, "import_dataset", label = "Change Dataset")
+        shinyjs::delay(100, shinyjs::enable("import_dataset"))
         
         return(cached_data)
       }
@@ -1013,9 +1025,9 @@ server <- function(input, output,session) {
       
       progress$set(value = 0.8, detail = "Processing metadata...")
       
-      # Disable the button
-      shinyjs::disable("import_dataset")
-      updateActionButton(session, "import_dataset", label = "", icon("circle-check"))
+      # Update button to allow dataset change
+      updateActionButton(session, "import_dataset", label = "Change Dataset")
+      shinyjs::delay(100, shinyjs::enable("import_dataset"))
       
       progress$set(value = 1, detail = "Complete!")
       

@@ -21,7 +21,7 @@
     "Description": "Zebrafish liver single-cell RNA-seq data - READY TO USE"
   },
   "Integrated": {
-    "Datasets": [],
+    "Datasets": ["Fibrotic Integrated Cross Species-002"],
     "Status": "Optional",
     "Description": "Cross-species integrated dataset (9.2GB) - Can be downloaded later if needed",
     "Message": "This large dataset is optional. The application works perfectly with the 3 individual species datasets above.",
