@@ -940,7 +940,7 @@ server <- function(input, output,session) {
         
         # Update UI to show dataset is loaded
         updateActionButton(session, "import_dataset", label = "Change Dataset")
-        shinyjs::delay(100, shinyjs::enable("import_dataset"))
+        shinyjs::enable("import_dataset")
         
         return(cached_data)
       }
@@ -1027,7 +1027,7 @@ server <- function(input, output,session) {
       
       # Update button to allow dataset change
       updateActionButton(session, "import_dataset", label = "Change Dataset")
-      shinyjs::delay(100, shinyjs::enable("import_dataset"))
+      shinyjs::enable("import_dataset")
       
       progress$set(value = 1, detail = "Complete!")
       
