@@ -20,6 +20,7 @@ dependencies:
   - r-ggpubr
   - r-shinywidgets
   - r-stringr
+  - r-remotes
   - pip:
       - scanpy
       - python-igraph

@@ -46,6 +46,10 @@ ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 COPY scripts/setup/install_optional_packages.R /tmp/install_optional_packages.R
 RUN conda run -n $CONDA_ENV Rscript /tmp/install_optional_packages.R || echo "Optional packages installation completed with warnings"
 
+# Copy and run script to install fenr specifically
+COPY scripts/setup/install_fenr.R /tmp/install_fenr.R
+RUN conda run -n $CONDA_ENV Rscript /tmp/install_fenr.R || echo "fenr installation completed with warnings"
+
 # Copy dataset management files (for runtime use, not build time)
 COPY scripts/dataset-management/download_datasets.py /app/scripts/dataset-management/download_datasets.py
 COPY config/datasets_sources.json /app/config/datasets_sources.json

@@ -902,20 +902,6 @@ server <- function(input, output,session) {
     return(content)
   })
   
-  # Observer to reset the button when user changes organism or dataset selection
-  observe({
-    # When user changes organism or dataset selection, reset the button
-    input$selection_organism
-    input$selection_dataset
-    
-    # Only reset if both selections are made
-    if (!is.null(input$selection_organism) && !is.null(input$selection_dataset)) {
-      shinyjs::enable("import_dataset")
-      updateActionButton(session, "import_dataset", label = "Load Dataset", icon("download"))
-    }
-  })
-  
-  
   adata <- eventReactive(input$import_dataset, {
     # Validate inputs
     if (is.null(input$selection_organism) || is.null(input$selection_dataset) || input$selection_dataset == "") {
@@ -937,10 +923,6 @@ server <- function(input, output,session) {
       cached_data <- get_cached_dataset(cache_key)
       if (!is.null(cached_data)) {
         showNotification("✅ Dataset loaded from cache (fast loading enabled)", type = "message")
-        
-        # Update UI to show dataset is loaded
-        updateActionButton(session, "import_dataset", label = "Change Dataset")
-        shinyjs::enable("import_dataset")
         
         return(cached_data)
       }
@@ -1024,10 +1006,6 @@ server <- function(input, output,session) {
       adata <- sc$read_h5ad(dataset_path)
       
       progress$set(value = 0.8, detail = "Processing metadata...")
-      
-      # Update button to allow dataset change
-      updateActionButton(session, "import_dataset", label = "Change Dataset")
-      shinyjs::enable("import_dataset")
       
       progress$set(value = 1, detail = "Complete!")
       
@@ -2300,6 +2278,13 @@ server <- function(input, output,session) {
     
     
     de_enrichment_calc <- reactive({
+      # Check if fenr package is available
+      if (!requireNamespace("fenr", quietly = TRUE)) {
+        showNotification("❌ Package 'fenr' not available. Enrichment analysis is disabled.", 
+                        type = "error", duration = 5)
+        return(NULL)
+      }
+      
       req(de_dge_calculation(), input$dge_dt_rows_all)
       group_name <- list(input$de_ident_1_name)
       result_df = sc$get$rank_genes_groups_df(de_dge_calculation(), group = group_name, key = 'rank_genes_groups')
@@ -2394,6 +2379,15 @@ server <- function(input, output,session) {
     })
 
     output$de_enrichment_table <- renderDT({
+      if (is.null(de_enrichment_calc())) {
+        # Return empty datatable with message
+        return(datatable(
+          data.frame(Message = "Enrichment analysis not available. Please install the 'fenr' package."),
+          options = list(pageLength = 5, dom = 't'),
+          rownames = FALSE
+        ))
+      }
+      
       req(de_enrichment_calc())
       if(input$de_enrichment_type == "GO"){
         datatable(
@@ -2805,6 +2799,13 @@ server <- function(input, output,session) {
     
     
     pseudo_enrichment_calc <- eventReactive(input$run_pseudo_enrichment,{
+      # Check if fenr package is available
+      if (!requireNamespace("fenr", quietly = TRUE)) {
+        showNotification("❌ Package 'fenr' not available. Enrichment analysis is disabled.", 
+                        type = "error", duration = 5)
+        return(NULL)
+      }
+      
       req(results_df(), input$pca_pseudo_bulk_results_table_rows_all, input$pseudo_enrichment_type)
       
       if(input$selection_organism %in% c("Human", "Integrated")){
@@ -2895,6 +2896,15 @@ server <- function(input, output,session) {
     })
 
     output$pseudo_enrichment_table <- renderDT({
+      if (is.null(pseudo_enrichment_calc())) {
+        # Return empty datatable with message
+        return(datatable(
+          data.frame(Message = "Enrichment analysis not available. Please install the 'fenr' package."),
+          options = list(pageLength = 5, dom = 't'),
+          rownames = FALSE
+        ))
+      }
+      
       req(pseudo_enrichment_calc())
       if(input$pseudo_enrichment_type == "GO"){
         datatable(
