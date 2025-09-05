@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 🚀 MASLDatlas Application - Production Optimized
   masldatlas:
