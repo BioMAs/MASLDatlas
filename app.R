@@ -419,7 +419,12 @@ ui <- fluidPage(
                 column(width = 6)
               ),
               fluidRow(
-                column(width = 6, shinycssloaders::withSpinner(DTOutput("table_cluster_markers"))),
+                column(width = 6, 
+                       downloadButton("download_markers", "📥 Download Markers (CSV)", 
+                                    icon = icon("download"), class = "btn-primary btn-sm mb-2"),
+                       br(),
+                       shinycssloaders::withSpinner(DTOutput("table_cluster_markers"))
+                ),
                 column(width = 6, shinycssloaders::withSpinner(imageOutput("imageoutput_CellType_groups")))
               )
             )
@@ -567,6 +572,9 @@ ui <- fluidPage(
                 fluidRow(
                   column(width = 6, shinycssloaders::withSpinner(plotOutput("stats_cor_plot"))),
                   column(width = 6,
+                         downloadButton("download_correlation", "📥 Download Correlation Results (CSV)", 
+                                      icon = icon("download"), class = "btn-primary btn-sm mb-2"),
+                         br(),
                          fluidRow(
                            column(width = 6, shinycssloaders::withSpinner(DTOutput("first_gene_correlation_table"))),
                            column(width = 6, shinycssloaders::withSpinner(DTOutput("second_gene_correlation_table")))
@@ -622,7 +630,11 @@ ui <- fluidPage(
                           style = "width: 100%; height: 100%; padding: 0;",
                          shinycssloaders::withSpinner(imageOutput("imageoutput_dge_ranks", width = "100%", height = "100%")))
                   ),
-                  column(width = 6, uiOutput("dge_table_filter"),
+                  column(width = 6, 
+                         downloadButton("download_dge", "📥 Download DGE Results (CSV)", 
+                                      icon = icon("download"), class = "btn-primary btn-sm mb-2"),
+                         br(),
+                         uiOutput("dge_table_filter"),
                          shinycssloaders::withSpinner(DTOutput("dge_dt"))
                   )
                 ),
@@ -702,6 +714,9 @@ ui <- fluidPage(
                          conditionalPanel(
                            condition = "input.de_radiobutton == 'Enrichment'",
                            selectInput("de_enrichment_type", label = NULL, choices = c("GO", "BP", "KEGG", "Reactome", "WikiPathways")),
+                           downloadButton("download_enrichment", "📥 Download Enrichment Results (CSV)", 
+                                        icon = icon("download"), class = "btn-success btn-sm mb-2"),
+                           br(),
                            div(
                              style = "width: 100%; height: 100%; padding: 0;", 
                            shinycssloaders::withSpinner(DTOutput("de_enrichment_table")))
@@ -762,6 +777,9 @@ ui <- fluidPage(
                                             style = "width: 100%; height: 100%; padding: 0;",
                                           shinycssloaders::withSpinner(imageOutput("pca_pseudo_bulk_volcano", width = "100%", height = "100%")))),
                          conditionalPanel(condition = "input.selection_pseudo_volcano_table == 'Result Table'",
+                                          downloadButton("download_pseudobulk", "📥 Download Pseudo-bulk Results (CSV)", 
+                                                       icon = icon("download"), class = "btn-primary btn-sm mb-2"),
+                                          br(),
                                           shinycssloaders::withSpinner(DTOutput("pca_pseudo_bulk_results_table"))))
                 ),
                 br(),
@@ -810,7 +828,11 @@ ui <- fluidPage(
                                           
                          )
                          ),
-                  column(width = 6, shinycssloaders::withSpinner(DTOutput("pseudo_enrichment_table")))
+                  column(width = 6, 
+                         downloadButton("download_pseudo_enrichment", "📥 Download Pseudo-bulk Enrichment (CSV)", 
+                                      icon = icon("download"), class = "btn-success btn-sm mb-2"),
+                         br(),
+                         shinycssloaders::withSpinner(DTOutput("pseudo_enrichment_table")))
                 )
               )
             )
@@ -3277,9 +3299,287 @@ server <- function(input, output,session) {
     }, deleteFile = TRUE)
     
     
+    # ========================================
+    # CSV EXPORT HANDLERS
+    # Added: 13 octobre 2025
+    # Feature: Export analysis results to CSV
+    # ========================================
     
+    # 1. Export Cell Type Markers
+    output$download_markers <- downloadHandler(
+      filename = function() {
+        paste0("Cell_markers_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(adata(), input$selection_rank_select)
+          
+          withProgress(message = "Exporting cell markers...", value = 0.5, {
+            data_markers <- sc$get$rank_genes_groups_df(adata(), group = input$selection_rank_select)
+            
+            if (is.null(data_markers) || nrow(data_markers) == 0) {
+              stop("No marker data available to export")
+            }
+            
+            write.csv(
+              data_markers,
+              file,
+              row.names = FALSE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              paste("Exported", nrow(data_markers), "marker genes"),
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting markers:", e$message),
+            type = "error",
+            duration = 5
+          )
+          # Write empty CSV to avoid download error
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
     
+    # 2. Export Gene Correlation Results
+    output$download_correlation <- downloadHandler(
+      filename = function() {
+        paste0("Correlation_results_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(statistics_coexpression())
+          
+          withProgress(message = "Exporting correlation results...", value = 0.5, {
+            # statistics_coexpression() returns a list: [[1]] = data, [[2]] = first_gene, [[3]] = second_gene
+            corr_data <- statistics_coexpression()[[1]]
+            
+            if (is.null(corr_data) || nrow(corr_data) == 0) {
+              stop("No correlation data available to export")
+            }
+            
+            write.csv(
+              as.data.frame(corr_data),
+              file,
+              row.names = TRUE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              paste("Exported", nrow(corr_data), "correlation data points"),
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting correlation results:", e$message),
+            type = "error",
+            duration = 5
+          )
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
     
+    # 3. Export Differential Gene Expression (DGE)
+    output$download_dge <- downloadHandler(
+      filename = function() {
+        paste0("DGE_results_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(de_dge_calculation(), input$de_ident_1_name)
+          
+          withProgress(message = "Exporting DGE results...", value = 0.5, {
+            # Extract DGE results the same way as in renderDT
+            group_name <- list(input$de_ident_1_name)
+            dge_data <- sc$get$rank_genes_groups_df(de_dge_calculation(), group = group_name, key = 'rank_genes_groups')
+            
+            # Rename columns to match the display
+            colnames(dge_data) <- c("Gene", "Scores", "LogFC", "p-val", "adj-p", "pct")
+            
+            if (is.null(dge_data) || nrow(dge_data) == 0) {
+              stop("No DGE data available to export")
+            }
+            
+            write.csv(
+              dge_data,
+              file,
+              row.names = FALSE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              paste("Exported", nrow(dge_data), "genes from DGE analysis"),
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting DGE results:", e$message),
+            type = "error",
+            duration = 5
+          )
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
+    
+    # 4. Export Enrichment Analysis (DE)
+    output$download_enrichment <- downloadHandler(
+      filename = function() {
+        enrichment_type <- input$de_enrichment_type
+        if (is.null(enrichment_type)) enrichment_type <- "enrichment"
+        paste0("Enrichment_", enrichment_type, "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(de_enrichment_calc())
+          
+          withProgress(message = "Exporting enrichment results...", value = 0.5, {
+            # Get the appropriate enrichment data based on selection
+            enrichment_data <- if (!is.null(input$de_enrichment_type)) {
+              switch(input$de_enrichment_type,
+                     "GO" = de_enrichment_calc()[[2]],
+                     "BP" = de_enrichment_calc()[[1]],
+                     "KEGG" = de_enrichment_calc()[[3]],
+                     "Reactome" = de_enrichment_calc()[[4]],
+                     "WikiPathways" = de_enrichment_calc()[[5]],
+                     de_enrichment_calc()[[1]])  # default
+            } else {
+              de_enrichment_calc()[[1]]
+            }
+            
+            if (is.null(enrichment_data) || nrow(enrichment_data) == 0) {
+              stop("No enrichment data available to export")
+            }
+            
+            write.csv(
+              as.data.frame(enrichment_data),
+              file,
+              row.names = FALSE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              "Enrichment results exported successfully",
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting enrichment results:", e$message),
+            type = "error",
+            duration = 5
+          )
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
+    
+    # 5. Export Pseudo-bulk Analysis Results
+    output$download_pseudobulk <- downloadHandler(
+      filename = function() {
+        paste0("Pseudobulk_results_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(results_df()[[1]])
+          
+          withProgress(message = "Exporting pseudo-bulk results...", value = 0.5, {
+            dataset <- results_df()[[1]]
+            
+            if (is.null(dataset) || nrow(dataset) == 0) {
+              stop("No pseudo-bulk data available to export")
+            }
+            
+            dataset[is.na(dataset)] <- 0
+            dataset[dataset == ""] <- 0
+            
+            write.csv(
+              dataset,
+              file,
+              row.names = FALSE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              paste("Exported", nrow(dataset), "genes from pseudo-bulk analysis"),
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting pseudo-bulk results:", e$message),
+            type = "error",
+            duration = 5
+          )
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
+    
+    # 6. Export Pseudo-bulk Enrichment
+    output$download_pseudo_enrichment <- downloadHandler(
+      filename = function() {
+        enrichment_type <- input$pseudo_enrichment_type
+        if (is.null(enrichment_type)) enrichment_type <- "enrichment"
+        paste0("Pseudobulk_enrichment_", enrichment_type, "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        tryCatch({
+          req(pseudo_enrichment_calc())
+          
+          withProgress(message = "Exporting pseudo-bulk enrichment...", value = 0.5, {
+            # Get the appropriate enrichment data based on selection
+            enrichment_data <- if (!is.null(input$pseudo_enrichment_type)) {
+              switch(input$pseudo_enrichment_type,
+                     "GO" = pseudo_enrichment_calc()[[2]],
+                     "BP" = pseudo_enrichment_calc()[[1]],
+                     "KEGG" = pseudo_enrichment_calc()[[3]],
+                     "Reactome" = pseudo_enrichment_calc()[[4]],
+                     "WikiPathways" = pseudo_enrichment_calc()[[5]],
+                     pseudo_enrichment_calc()[[1]])  # default
+            } else {
+              pseudo_enrichment_calc()[[1]]
+            }
+            
+            if (is.null(enrichment_data) || nrow(enrichment_data) == 0) {
+              stop("No pseudo-bulk enrichment data available to export")
+            }
+            
+            write.csv(
+              as.data.frame(enrichment_data),
+              file,
+              row.names = FALSE,
+              quote = TRUE
+            )
+            
+            showNotification(
+              "Pseudo-bulk enrichment exported successfully",
+              type = "message",
+              duration = 3
+            )
+          })
+        }, error = function(e) {
+          showNotification(
+            paste("Error exporting pseudo-bulk enrichment:", e$message),
+            type = "error",
+            duration = 5
+          )
+          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+        })
+      }
+    )
     
     
 }
