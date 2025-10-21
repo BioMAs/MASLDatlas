@@ -845,6 +845,311 @@ ui <- fluidPage(
         #   icon = icon("phone-volume")
         # )
       )
+    ),
+    
+    # Documentation Tab
+    tabPanel(
+      title = div(
+        span("📚", style = "margin-right: 5px;"),
+        "Documentation"
+      ),
+      value = "tab_documentation",
+      
+      div(class = "container-fluid", style = "padding: 20px; max-width: 1200px; margin: 0 auto;",
+        
+        # Header
+        div(class = "doc-header", style = "text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; border-radius: 10px;",
+          h1("MASLDatlas Documentation", style = "margin: 0; font-size: 2.5em;"),
+          p("Complete guide to using the Multi-species scRNA-seq Atlas of MASLD", style = "margin-top: 10px; font-size: 1.2em; opacity: 0.9;")
+        ),
+        
+        # Table of Contents
+        div(class = "toc-card", style = "background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #3498db;",
+          h3("Table of Contents", style = "margin-top: 0; color: #2c3e50;"),
+          tags$ul(style = "list-style-type: none; padding-left: 0;",
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#overview", "1. Overview", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            ),
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#getting-started", "2. Getting Started", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            ),
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#workflow", "3. Analysis Workflow", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            ),
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#features", "4. Key Features", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            ),
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#export", "5. Exporting Results", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            ),
+            tags$li(style = "margin: 10px 0;", 
+              tags$a(href = "#troubleshooting", "6. Troubleshooting", style = "color: #3498db; text-decoration: none; font-weight: 500;")
+            )
+          )
+        ),
+        
+        # Section 1: Overview
+        div(id = "overview", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("1. Overview", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            p("MASLDatlas is an interactive web application for exploring and analyzing single-cell RNA sequencing (scRNA-seq) data from multiple species affected by Metabolic dysfunction-Associated Steatotic Liver Disease (MASLD)."),
+            h4("Key Capabilities:"),
+            tags$ul(
+              tags$li("Interactive visualization of scRNA-seq datasets (UMAP, Violin plots, Heatmaps)"),
+              tags$li("Differential gene expression analysis"),
+              tags$li("Gene correlation and co-expression studies"),
+              tags$li("Functional enrichment analysis (GO, KEGG, Reactome, WikiPathways)"),
+              tags$li("Pseudo-bulk DESeq2 analysis"),
+              tags$li("CSV export functionality for all results")
+            ),
+            h4("Supported Species:"),
+            tags$ul(
+              tags$li("Human"),
+              tags$li("Mouse"),
+              tags$li("Zebrafish"),
+              tags$li("Integrated datasets")
+            )
+          )
+        ),
+        
+        # Section 2: Getting Started
+        div(id = "getting-started", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("2. Getting Started", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            h4("Step 1: Select a Dataset"),
+            p("Navigate to the", strong("Import Dataset"), "tab and:"),
+            tags$ol(
+              tags$li("Choose an organism from the dropdown menu"),
+              tags$li("Select a dataset from the available options"),
+              tags$li("Wait for the data to load (progress bar will appear)")
+            ),
+            
+            h4("Step 2: Explore the Data", style = "margin-top: 20px;"),
+            p("Once loaded, you can:"),
+            tags$ul(
+              tags$li("Visualize cell types on UMAP plots"),
+              tags$li("Filter data by specific cell types or conditions"),
+              tags$li("View gene expression patterns")
+            ),
+            
+            div(class = "alert alert-info", style = "background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin-top: 20px;",
+              strong("Tip:"), " Start with a smaller dataset if you're new to the tool to familiarize yourself with the interface."
+            )
+          )
+        ),
+        
+        # Section 3: Analysis Workflow
+        div(id = "workflow", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("3. Analysis Workflow", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            
+            h4("Step 1: Import Dataset"),
+            p("Select your organism and dataset of interest."),
+            
+            h4("Step 2: Visualize Gene Expression", style = "margin-top: 20px;"),
+            tags$ul(
+              tags$li(strong("UMAP plots:"), " Visualize cell populations"),
+              tags$li(strong("Violin plots:"), " Compare gene expression across cell types"),
+              tags$li(strong("Gene filters:"), " Search and select genes of interest")
+            ),
+            
+            h4("Step 3: Gene Correlation Analysis", style = "margin-top: 20px;"),
+            tags$ul(
+              tags$li("Select two genes to analyze their co-expression"),
+              tags$li("Choose statistical test (Spearman or Pearson)"),
+              tags$li("View scatter plots with correlation coefficients"),
+              tags$li("Download results as CSV")
+            ),
+            
+            h4("Step 4: Differential Gene Expression (DGE)", style = "margin-top: 20px;"),
+            tags$ul(
+              tags$li("Define two groups to compare"),
+              tags$li("Choose statistical method (Wilcoxon, t-test, etc.)"),
+              tags$li("View ranked gene lists with statistics"),
+              tags$li("Filter by log fold-change, p-value, or score"),
+              tags$li("Export results to CSV")
+            ),
+            
+            h4("Step 5: Enrichment Analysis", style = "margin-top: 20px;"),
+            tags$ul(
+              tags$li("Select genes from DGE results"),
+              tags$li("Choose enrichment database (GO, KEGG, Reactome, etc.)"),
+              tags$li("Visualize enriched pathways and terms"),
+              tags$li("Download enrichment tables")
+            ),
+            
+            h4("Step 6: Pseudo-bulk Analysis", style = "margin-top: 20px;"),
+            tags$ul(
+              tags$li("Aggregate cells by sample"),
+              tags$li("Run DESeq2 for robust differential expression"),
+              tags$li("View volcano plots and results tables"),
+              tags$li("Perform enrichment on pseudo-bulk results")
+            )
+          )
+        ),
+        
+        # Section 4: Key Features
+        div(id = "features", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("4. Key Features", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            
+            # Feature cards
+            div(class = "row",
+              div(class = "col-md-6", style = "margin-bottom: 20px;",
+                div(style = "background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;",
+                  h5("Interactive Visualizations"),
+                  tags$ul(
+                    tags$li("UMAP/t-SNE projections"),
+                    tags$li("Violin and box plots"),
+                    tags$li("Heatmaps and dot plots"),
+                    tags$li("Volcano plots for DGE"),
+                    tags$li("Customizable color schemes")
+                  )
+                )
+              ),
+              div(class = "col-md-6", style = "margin-bottom: 20px;",
+                div(style = "background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;",
+                  h5("Statistical Analysis"),
+                  tags$ul(
+                    tags$li("Wilcoxon rank-sum test"),
+                    tags$li("Student's t-test"),
+                    tags$li("Spearman/Pearson correlation"),
+                    tags$li("DESeq2 for pseudo-bulk"),
+                    tags$li("Multiple testing correction")
+                  )
+                )
+              ),
+              div(class = "col-md-6", style = "margin-bottom: 20px;",
+                div(style = "background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3;",
+                  h5("Enrichment Databases"),
+                  tags$ul(
+                    tags$li("Gene Ontology (GO)"),
+                    tags$li("Biological Processes (BP)"),
+                    tags$li("KEGG Pathways"),
+                    tags$li("Reactome"),
+                    tags$li("WikiPathways")
+                  )
+                )
+              ),
+              div(class = "col-md-6", style = "margin-bottom: 20px;",
+                div(style = "background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #9c27b0;",
+                  h5("Advanced Options"),
+                  tags$ul(
+                    tags$li("Cell type filtering"),
+                    tags$li("Gene set enrichment analysis"),
+                    tags$li("Custom gene lists"),
+                    tags$li("Batch effect visualization"),
+                    tags$li("Quality control metrics")
+                  )
+                )
+              )
+            )
+          )
+        ),
+        
+        # Section 5: Exporting Results
+        div(id = "export", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("5. Exporting Results", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            p("All analysis results can be exported as CSV files for further analysis in Excel, R, Python, or other tools."),
+            
+            h4("Available Exports:"),
+            tags$ul(
+              tags$li(strong("Cell Type Markers:"), " Download marker genes for selected clusters"),
+              tags$li(strong("Correlation Results:"), " Export gene-gene correlation data"),
+              tags$li(strong("DGE Results:"), " Save differential expression statistics"),
+              tags$li(strong("Enrichment Analysis:"), " Download pathway enrichment tables"),
+              tags$li(strong("Pseudo-bulk Results:"), " Export DESeq2 results"),
+              tags$li(strong("Pseudo-bulk Enrichment:"), " Save enrichment for pseudo-bulk data")
+            ),
+            
+            h4("How to Export:", style = "margin-top: 20px;"),
+            tags$ol(
+              tags$li("Complete your analysis in the respective tab"),
+              tags$li("Look for the ", tags$code("Download ... (CSV)"), " button below each results table"),
+              tags$li("Click the button to download the file"),
+              tags$li("Files are named with the analysis type and current date")
+            ),
+            
+            div(class = "alert alert-success", style = "background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin-top: 20px;",
+              strong("Pro Tip:"), " Export your results regularly to keep track of different analyses and comparisons."
+            )
+          )
+        ),
+        
+        # Section 6: Troubleshooting
+        div(id = "troubleshooting", class = "doc-section", style = "margin-bottom: 40px;",
+          h2("6. Troubleshooting", style = "color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;"),
+          div(style = "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);",
+            
+            h4("Common Issues and Solutions:"),
+            
+            div(style = "background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0;",
+              h5("Dataset not loading"),
+              tags$ul(
+                tags$li("Check your internet connection"),
+                tags$li("Try refreshing the page"),
+                tags$li("Select a different dataset to verify the issue"),
+                tags$li("Clear browser cache if problem persists")
+              )
+            ),
+            
+            div(style = "background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0;",
+              h5("Export button returns error 500"),
+              tags$ul(
+                tags$li("Ensure you have completed the analysis before exporting"),
+                tags$li("Check that the results table contains data"),
+                tags$li("Try re-running the analysis"),
+                tags$li("If error persists, the data may be too large - try filtering first")
+              )
+            ),
+            
+            div(style = "background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0;",
+              h5("Enrichment analysis not working"),
+              tags$ul(
+                tags$li("Verify that genes are selected in the DGE table"),
+                tags$li("Check that the organism matches your dataset"),
+                tags$li("Ensure the fenr package is installed"),
+                tags$li("Try with a different enrichment database")
+              )
+            ),
+            
+            div(style = "background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0;",
+              h5("Plots not displaying"),
+              tags$ul(
+                tags$li("Wait for analysis to complete (check for spinner)"),
+                tags$li("Ensure required inputs are selected"),
+                tags$li("Try zooming in/out in your browser"),
+                tags$li("Check browser console for JavaScript errors")
+              )
+            ),
+            
+            h4("Need More Help?", style = "margin-top: 30px;"),
+            p("If you encounter issues not covered here:"),
+            tags$ul(
+              tags$li("Check the GitHub repository for known issues"),
+              tags$li("Open an issue with a detailed description of the problem"),
+              tags$li("Include screenshots and error messages when possible")
+            )
+          )
+        ),
+        
+        # Footer
+        div(class = "doc-footer", style = "text-align: center; margin-top: 50px; padding: 30px; background: #f8f9fa; border-radius: 8px;",
+          h4("Citation", style = "color: #2c3e50;"),
+          p("If you use MASLDatlas in your research, please cite our publication:"),
+          div(style = "background: white; padding: 15px; border-radius: 4px; margin: 15px 0; font-family: monospace; text-align: left;",
+            "MASLDatlas: Multi-species single-cell RNA-seq atlas of Metabolic dysfunction-Associated Steatotic Liver Disease. [Journal Name], [Year]."
+          ),
+          hr(),
+          p(style = "margin-top: 20px; color: #7f8c8d;",
+            "MASLDatlas v1.0 | ", 
+            tags$a(href = "https://github.com/BioMAs/MASLDatlas", target = "_blank", "GitHub Repository"),
+            " | Last updated: October 2025"
+          )
+        )
+      )
     )
     # ,
     # tabPanel(
