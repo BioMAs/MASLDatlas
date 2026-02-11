@@ -1,0 +1,121 @@
+services:
+  # 🚀 MASLDatlas Application - Production Optimized
+  masldatlas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: masldatlas:production
+    container_name: masldatlas-prod
+    restart: unless-stopped
+    
+    # 🚀 Optimized Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    
+    # 🚀 Production Environment variables with optimizations
+    environment:
+      - SHINY_HOST=0.0.0.0
+      - SHINY_PORT=3838
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      
+      # 🚀 Performance Optimizations
+      - R_MAX_VSIZE=8Gb
+      - R_MAX_NUM_DLLS=200
+      - MASLDATLAS_CACHE_DIR=/app/cache
+      - MASLDATLAS_MONITORING_ENABLED=true
+      - MASLDATLAS_LOG_LEVEL=INFO
+      
+      # Production settings
+      - AUTO_DOWNLOAD_DATASETS=true
+      - SKIP_DATASET_CHECK=false
+    
+    # 🚀 Optimized Volume mounts
+    volumes:
+      - ./datasets:/app/datasets:ro
+      - ./enrichment_sets:/app/enrichment_sets:ro
+      - ./config/datasets_config.json:/app/config/datasets_config.json:ro
+      - ./config/datasets_sources.json:/app/config/datasets_sources.json:ro
+      # 🚀 Performance modules
+      - ./R:/app/R:ro
+      - ./scripts/setup:/app/scripts/setup:ro
+      # Cache volume
+      - masldatlas_cache:/app/cache
+    
+    # 🚀 Enhanced Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3838"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 300s
+    
+    # 🔒 Security settings
+    security_opt:
+      - no-new-privileges:true
+    
+    # 🚀 tmpfs for performance
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=2G
+      - /app/cache/temp:rw,noexec,nosuid,size=1G
+    
+    # 🚀 Enhanced Traefik labels for production
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      
+      # Router configuration
+      - "traefik.http.routers.masldatlas.rule=Host(`masldatlas.scilicium.com`)"
+      - "traefik.http.routers.masldatlas.entrypoints=websecure"
+      - "traefik.http.routers.masldatlas.tls=true"
+      - "traefik.http.routers.masldatlas.tls.certresolver=letsencrypt"
+      
+      # Service configuration
+      - "traefik.http.services.masldatlas.loadbalancer.server.port=3838"
+      
+      # Middleware for performance and security
+      - "traefik.http.routers.masldatlas.middlewares=masldatlas-headers,masldatlas-compress"
+      
+      # Security headers
+      - "traefik.http.middlewares.masldatlas-headers.headers.SSLRedirect=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.STSSeconds=31536000"
+      - "traefik.http.middlewares.masldatlas-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.masldatlas-headers.headers.browserXSSFilter=true"
+      
+      # Compression for performance
+      - "traefik.http.middlewares.masldatlas-compress.compress=true"
+      
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.masldatlas-http.rule=Host(`masldatlas.scilicium.com`)"
+      - "traefik.http.routers.masldatlas-http.entrypoints=web"
+      - "traefik.http.routers.masldatlas-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    
+    # Network configuration
+    networks:
+      - web
+    
+    # 🚀 Optimized Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# 🚀 Network definitions
+networks:
+  web:
+    external: true
+
+# 🚀 Volume definitions  
+volumes:
+  masldatlas_cache:
+    driver: local

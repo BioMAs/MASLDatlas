@@ -34,7 +34,7 @@ class DatasetOptimizer:
         
         print(f"✅ Dataset loaded in {load_time:.1f} seconds")
         print(f"📈 Shape: {adata.n_obs:,} cells × {adata.n_vars:,} genes")
-        print(f"🔢 Memory usage: ~{adata.X.nbytes / (1024**3):.2f} GB")
+        # print(f"🔢 Memory usage: ~{adata.X.nbytes / (1024**3):.2f} GB")
         
         return adata
     
@@ -79,7 +79,7 @@ class DatasetOptimizer:
             # Random sampling with stratification by cell type if available
             if 'CellType' in adata.obs.columns:
                 # Stratified sampling
-                sc.pp.subsample(adata, n_obs=sample_size, copy=False)
+                adata_sub = sc.pp.subsample(adata, n_obs=sample_size, copy=True)
             else:
                 # Random sampling
                 np.random.seed(42)

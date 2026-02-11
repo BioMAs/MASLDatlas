@@ -1,22 +1,31 @@
 {
   "Human": {
-    "Datasets": [
-      "GSE181483"
-    ],
+    "Datasets": {
+      "GSE181483": {
+        "full_path": "GSE181483.h5ad",
+        "subset_path": "GSE181483_sub5k.h5ad"
+      }
+    },
     "Status": "Available",
     "Description": "Human liver single-cell RNA-seq data - READY TO USE"
   },
   "Mouse": {
-    "Datasets": [
-      "GSE145086"
-    ],
+    "Datasets": {
+      "GSE145086": {
+        "full_path": "GSE145086.h5ad",
+        "subset_path": "GSE145086_sub5k.h5ad"
+      }
+    },
     "Status": "Available", 
     "Description": "Mouse liver single-cell RNA-seq data - READY TO USE"
   },
   "Zebrafish": {
-    "Datasets": [
-      "GSE181987"
-    ],
+    "Datasets": {
+      "GSE181987": {
+        "full_path": "GSE181987.h5ad",
+        "subset_path": "GSE181987_sub5k.h5ad"
+      }
+    },
     "Status": "Available",
     "Description": "Zebrafish liver single-cell RNA-seq data - READY TO USE"
   },
