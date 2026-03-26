@@ -1,0 +1,78 @@
+# Production Docker Compose — MASLDatlas
+# Backend exposé via Traefik v2 sur api.masld.scilicium.com
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Prérequis sur le serveur :
+#   - réseau Docker externe "web" créé par Traefik : docker network create web
+#   - certresolver "letsencrypt" configuré dans Traefik
+#
+# Variable optionnelle dans .env.prod :
+#   DATASETS_PATH=/chemin/absolu/vers/datasets  (défaut: ./datasets)
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: masldatlas-backend
+    # Pas de ports exposés directement : Traefik route le trafic
+    volumes:
+      - ${DATASETS_PATH:-./datasets}:/app/datasets:ro
+      - ./config:/app/config:ro
+      - ./enrichment_sets:/app/enrichment_sets:ro
+      - ./cache:/app/cache
+      # PAS de volume hot-reload en production
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PYTHONUNBUFFERED=1
+      - CONFIG_PATH=/app/config/datasets_config.json
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - REDIS_URL=redis://masldatlas-redis:6379/0
+      - REDIS_ENABLED=true
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - web              # réseau Traefik (externe)
+      - masldatlas-net   # réseau interne (Redis)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.masldatlas-api.rule=Host(`api.masld.scilicium.com`)"
+      - "traefik.http.routers.masldatlas-api.entryPoints=websecure"
+      - "traefik.http.services.masldatlas-api.loadbalancer.server.port=8000"
+
+  redis:
+    image: redis:7-alpine
+    container_name: masldatlas-redis
+    # Pas de ports exposés en production (Redis reste interne)
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - masldatlas-net   # réseau interne uniquement
+
+networks:
+  web:
+    external: true       # réseau géré par Traefik — doit exister sur le serveur
+  masldatlas-net:
+    driver: bridge       # réseau interne backend↔redis
+
+volumes:
+  redis-data:
