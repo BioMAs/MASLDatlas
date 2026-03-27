@@ -2,52 +2,11 @@
 Application configuration
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from pathlib import Path
 from typing import List
+import json
 import os
-
-class Settings(BaseSettings):
-    """Application settings"""
-    
-    # Environment
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
-    
-    # API
-    API_V1_PREFIX: str = "/api"
-    PROJECT_NAME: str = "MASLDatlas"
-    VERSION: str = "2.0.0"
-    
-    # CORS - Allow configuration via environment variable
-    ALLOWED_ORIGINS: List[str] = []
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Parse ALLOWED_ORIGINS from environment variable if set
-        if not self.ALLOWED_ORIGINS:
-            origins_env = os.getenv("ALLOWED_ORIGINS", "")
-            if origins_env:
-                self.ALLOWED_ORIGINS = [origin.strip() for origin in origins_env.split(",")]
-            else:
-                # Default origins for development
-                self.ALLOWED_ORIGINS = [
-                    "http://localhost:5173",  # Vite dev server
-                    "http://localhost:3000",
-                    "http://localhost:8080",
-                ]
-    
-    # Paths
-    BASE_DIR: Path = Path(__file__).parent.parent.parent.parent
-    
-    @property
-    def _base_dir_computed(self) -> Path:
-        """
-        Compute base dir based on environment.
-        This is a workaround because defining BASE_DIR directly with conditional logic 
-        in Pydantic field defaults can be tricky if we want it to be static.
-        However, for simplicity, we'll determine it outside or use a validator.
-        """
-        return self.BASE_DIR
 
 def get_base_dir() -> Path:
     """Helper to determine base directory"""
@@ -81,22 +40,32 @@ class Settings(BaseSettings):
     
     # CORS - Allow configuration via environment variable
     ALLOWED_ORIGINS: List[str] = []
-    
+
+    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        """Accept JSON array OR comma-separated string from env"""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith('['):
+                return json.loads(v)
+            return [o.strip() for o in v.split(',') if o.strip()]
+        return v
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Parse ALLOWED_ORIGINS from environment variable if set
+        # Fall back to default dev origins if nothing was provided
         if not self.ALLOWED_ORIGINS:
-            origins_env = os.getenv("ALLOWED_ORIGINS", "")
-            if origins_env:
-                self.ALLOWED_ORIGINS = [origin.strip() for origin in origins_env.split(",")]
-            else:
-                # Default origins for development
-                self.ALLOWED_ORIGINS = [
-                    "http://localhost:5173",  # Vite dev server
-                    "http://localhost:3000",
-                    "http://localhost:8080",
-                ]
-    
+            self.ALLOWED_ORIGINS = [
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:8080",
+            ]
+
     # Paths
     BASE_DIR: Path = get_base_dir()
     DATA_DIR: Path = BASE_DIR / "datasets"
