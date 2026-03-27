@@ -168,8 +168,19 @@ class AnalysisService:
         if gene1 not in adata.var_names or gene2 not in adata.var_names:
             raise ValueError(f"Gene not found in dataset")
         
-        expr1 = adata[:, gene1].layers[layer].toarray().flatten()
-        expr2 = adata[:, gene2].layers[layer].toarray().flatten()
+        if layer not in adata.layers:
+            logger.warning(f"Layer '{layer}' not found, falling back to adata.X")
+            import scipy.sparse as sp
+            raw1 = adata[:, gene1].X
+            raw2 = adata[:, gene2].X
+            expr1 = (raw1.toarray().flatten() if sp.issparse(raw1) else np.asarray(raw1).flatten())
+            expr2 = (raw2.toarray().flatten() if sp.issparse(raw2) else np.asarray(raw2).flatten())
+        else:
+            import scipy.sparse as sp
+            raw1 = adata[:, gene1].layers[layer]
+            raw2 = adata[:, gene2].layers[layer]
+            expr1 = (raw1.toarray().flatten() if sp.issparse(raw1) else np.asarray(raw1).flatten())
+            expr2 = (raw2.toarray().flatten() if sp.issparse(raw2) else np.asarray(raw2).flatten())
         
         # Remove zeros if requested
         if remove_zeros:
@@ -216,14 +227,23 @@ class AnalysisService:
         if gene not in adata.var_names:
             raise ValueError(f"Gene {gene} not found")
         
-        gene_expr = adata[:, gene].layers[layer].toarray().flatten()
+        import scipy.sparse as sp
+        if layer not in adata.layers:
+            logger.warning(f"Layer '{layer}' not found in get_top_correlated_genes, falling back to adata.X")
+            raw = adata[:, gene].X
+            gene_expr = (raw.toarray().flatten() if sp.issparse(raw) else np.asarray(raw).flatten())
+        else:
+            raw = adata[:, gene].layers[layer]
+            gene_expr = (raw.toarray().flatten() if sp.issparse(raw) else np.asarray(raw).flatten())
         
+        # Limit to first 1000 genes for performance — covers most biologically relevant candidates
         correlations = []
         for other_gene in adata.var_names[:1000]:  # Limit for performance
             if other_gene == gene:
                 continue
             
-            other_expr = adata[:, other_gene].layers[layer].toarray().flatten()
+            raw_o = adata[:, other_gene].layers[layer] if layer in adata.layers else adata[:, other_gene].X
+            other_expr = (raw_o.toarray().flatten() if sp.issparse(raw_o) else np.asarray(raw_o).flatten())
             corr, _ = stats.spearmanr(gene_expr, other_expr)
             correlations.append({
                 "gene": other_gene,

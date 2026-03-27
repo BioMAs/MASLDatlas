@@ -33,6 +33,15 @@ export const useDatasetInfo = (sessionId: string | null) => {
   });
 };
 
+export const useDatasetGenes = (sessionId: string | null) => {
+  return useQuery({
+    queryKey: ['dataset-genes', sessionId],
+    queryFn: () => datasetService.getDatasetGenes(sessionId!),
+    enabled: !!sessionId,
+    staleTime: Infinity, // Gene list doesn't change for a loaded dataset
+  });
+};
+
 export const useGeneExpression = (sessionId: string | null, gene: string | null) => {
   return useQuery({
     queryKey: ['gene-expression', sessionId, gene],
@@ -41,15 +50,46 @@ export const useGeneExpression = (sessionId: string | null, gene: string | null)
   });
 };
 
-export const useUMAPVisualization = (sessionId: string | null, colorBy: string = 'CellType') => {
+export const useSubsetStats = (sessionId: string | null, filterColumn: string, filterValue: string | null) => {
   return useQuery({
-    queryKey: ['umap-visualization', sessionId, colorBy],
+    queryKey: ['subset-stats', sessionId, filterColumn, filterValue],
+    queryFn: () => datasetService.getSubsetStats(sessionId!, filterColumn, filterValue!),
+    enabled: !!sessionId && !!filterValue,
+  });
+};
+
+export const useUMAPVisualization = (
+  sessionId: string | null, 
+  colorBy: string = 'CellType',
+  filterColumn?: string,
+  filterValues?: string[]
+) => {
+  return useQuery({
+    queryKey: ['umap-visualization', sessionId, colorBy, filterColumn, filterValues],
     queryFn: async () => {
       const { visualizationService } = await import('../services/visualizationService');
-      return visualizationService.generateUMAP(sessionId!, colorBy);
+      return visualizationService.generateUMAP(sessionId!, colorBy, filterColumn, filterValues);
     },
     enabled: !!sessionId,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+  });
+};
+
+export const useViolinVisualization = (
+  sessionId: string | null,
+  genes: string[],
+  groupby: string = 'CellType',
+  filterColumn?: string,
+  filterValues?: string[]
+) => {
+  return useQuery({
+    queryKey: ['violin-visualization', sessionId, genes, groupby, filterColumn, filterValues],
+    queryFn: async () => {
+      const { visualizationService } = await import('../services/visualizationService');
+      return visualizationService.generateViolin(sessionId!, genes, groupby, filterColumn, filterValues);
+    },
+    enabled: !!sessionId && genes.length > 0,
+    staleTime: 10 * 60 * 1000,
   });
 };
 

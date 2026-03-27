@@ -22,7 +22,12 @@ services:
       # IMPORTANT: Add your Vercel URL to ALLOWED_ORIGINS for CORS
       # Example: ALLOWED_ORIGINS=["https://masldatlas.vercel.app", "http://localhost:5173"]
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-["http://localhost:5173", "http://localhost:3000"]}
+      - REDIS_URL=${REDIS_URL:-redis://masldatlas-redis:6379/0}
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

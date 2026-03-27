@@ -6,6 +6,8 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+import pandas as pd
 import io
 import base64
 from typing import Optional, List, Dict, Any
@@ -78,15 +80,37 @@ class VisualizationService:
         """
         logger.info(f"🎻 Generating violin plot for {len(genes)} genes")
         
-        fig, ax = plt.subplots(figsize=(12, 6))
-        sc.pl.violin(
-            adata, 
-            keys=genes, 
-            groupby=groupby,
-            rotation=90,
-            ax=ax,
-            show=False
-        )
+        # Calculate dynamic figure size
+        num_genes = len(genes)
+        width = max(8, num_genes * 4)
+        height = 6
+        
+        # Close any existing figures
+        plt.close('all')
+        
+        if num_genes > 1:
+            # For multiple genes, sc.pl.violin manages figure creation (one axes per gene)
+            # using 'ax' argument is not supported for multiple keys
+            with plt.rc_context({'figure.figsize': (width, height)}):
+                sc.pl.violin(
+                    adata, 
+                    keys=genes, 
+                    groupby=groupby,
+                    rotation=90,
+                    show=False
+                )
+            fig = plt.gcf()
+        else:
+            # For single gene, we create the figure control explicitly
+            fig, ax = plt.subplots(figsize=(width, height))
+            sc.pl.violin(
+                adata, 
+                keys=genes, 
+                groupby=groupby,
+                rotation=90,
+                ax=ax,
+                show=False
+            )
         
         if return_base64:
             return self._fig_to_base64(fig)
@@ -253,6 +277,148 @@ class VisualizationService:
         plt.close(fig)
         return None
     
+    def generate_rank_genes_groups_plot(
+        self,
+        adata: sc.AnnData,
+        n_genes: int = 20,
+        groupby: str = "CellType",
+        groups: Optional[List[str]] = None,
+        return_base64: bool = True
+    ) -> Optional[str]:
+        """
+        Generate rank genes groups plot (heatmap of top marker genes)
+        
+        Args:
+            adata: AnnData object with rank_genes_groups results
+            n_genes: Number of top genes per group
+            groupby: Grouping variable
+            groups: Optional list of specific groups to display (e.g. ["Hepatocytes"])
+            return_base64: Whether to return base64
+            
+        Returns:
+            Base64 encoded image or None
+        """
+        logger.info(f"📊 Generating rank genes groups plot" + (f" for groups={groups}" if groups else ""))
+        
+        try:
+            # Let scanpy create its own figure; retrieve it afterward with plt.gcf()
+            sc.pl.rank_genes_groups(
+                adata,
+                n_genes=n_genes,
+                groups=groups,
+                sharey=False,
+                show=False
+            )
+            fig = plt.gcf()
+            
+            if return_base64:
+                img = self._fig_to_base64(fig)  # _fig_to_base64 closes fig
+                return img
+            
+            plt.close(fig)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to generate rank genes groups plot: {e}")
+            plt.close('all')
+            return None
+    
+    def generate_rank_genes_groups_dotplot(
+        self,
+        adata: sc.AnnData,
+        n_genes: int = 10,
+        return_base64: bool = True
+    ) -> Optional[str]:
+        """
+        Generate dotplot of top marker genes per group
+        
+        Args:
+            adata: AnnData with rank_genes_groups
+            n_genes: Number of genes per group
+            return_base64: Base64 encoding
+            
+        Returns:
+            Base64 image or None
+        """
+        logger.info(f"🔵 Generating rank genes groups dotplot")
+        
+        try:
+            fig = plt.figure(figsize=(14, 8))
+            sc.pl.rank_genes_groups_dotplot(
+                adata,
+                n_genes=n_genes,
+                show=False
+            )
+            
+            if return_base64:
+                return self._fig_to_base64(plt.gcf())
+            
+            plt.close(fig)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to generate dotplot: {e}")
+            plt.close('all')
+            return None
+    
+    def generate_interactive_violin(
+        self,
+        adata: sc.AnnData,
+        gene: str,
+        groupby: str = "CellType",
+        splitby: Optional[str] = None,
+        return_base64: bool = True
+    ) -> Optional[str]:
+        """
+        Generate interactive violin plot for a single gene
+        
+        Args:
+            adata: AnnData object
+            gene: Gene to plot
+            groupby: Main grouping variable
+            splitby: Optional split variable (e.g., Condition)
+            return_base64: Base64 encoding
+            
+        Returns:
+            Base64 image or None
+        """
+        logger.info(f"🎻 Generating violin plot for gene: {gene}")
+        
+        if gene not in adata.var_names:
+            logger.warning(f"Gene {gene} not found in dataset")
+            return None
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        if splitby and splitby in adata.obs.columns:
+            sc.pl.violin(
+                adata,
+                keys=gene,
+                groupby=groupby,
+                split=splitby,
+                rotation=90,
+                ax=ax,
+                show=False
+            )
+        else:
+            sc.pl.violin(
+                adata,
+                keys=gene,
+                groupby=groupby,
+                rotation=90,
+                ax=ax,
+                show=False
+            )
+        
+        plt.title(f'Expression of {gene}', fontsize=14, fontweight='bold')
+        plt.tight_layout()
+        
+        if return_base64:
+            return self._fig_to_base64(fig)
+        
+        plt.close(fig)
+        return None
+    
     def _fig_to_base64(self, fig) -> str:
         """Convert matplotlib figure to base64 string"""
         buf = io.BytesIO()
@@ -261,9 +427,6 @@ class VisualizationService:
         img_base64 = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig)
         return f"data:image/png;base64,{img_base64}"
-
-# Import numpy for the volcano plot
-import numpy as np
 
 # Global instance
 visualization_service = VisualizationService()

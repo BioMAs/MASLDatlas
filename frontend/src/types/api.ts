@@ -100,6 +100,11 @@ export interface DGEResponse {
   results: DGEResult[];
 }
 
+export interface SubsetStats {
+  n_cells: number;
+  n_genes: number;
+}
+
 // Correlation types
 export interface CorrelationRequest {
   gene1: string;

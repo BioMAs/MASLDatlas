@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     # Cache
     CACHE_ENABLED: bool = True
     CACHE_TTL: int = 3600  # 1 hour
+
+    # Redis (optional — falls back to in-memory if unavailable)
+    REDIS_URL: str = "redis://masldatlas-redis:6379/0"
+    REDIS_ENABLED: bool = True
     
     # Dataset limits
     MAX_CELLS_DISPLAY: int = 100000

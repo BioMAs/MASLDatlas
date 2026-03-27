@@ -2,6 +2,10 @@
  * UMAP Visualization Component
  */
 import { useUMAPVisualization } from '../hooks/useDataset';
+import { useFullscreen } from '../hooks/useFullscreen';
+import { ActionButtons } from './ui/ActionButtons';
+import { FullscreenModal } from './ui/FullscreenModal';
+import { downloadImage } from '../utils/downloadImage';
 
 interface UMAPVisualizationProps {
   sessionId: string;
@@ -14,6 +18,14 @@ export function UMAPVisualization({ sessionId, colorBy = 'CellType', gene }: UMA
   const actualColorBy = gene || colorBy;
   
   const { data: umapData, isLoading } = useUMAPVisualization(sessionId, actualColorBy);
+  const { isFullscreen, openFullscreen, closeFullscreen } = useFullscreen();
+
+  const handleDownloadImage = () => {
+    if (umapData?.image) {
+      const filename = gene ? `umap_${gene}_expression` : `umap_${colorBy}`;
+      downloadImage(umapData.image, filename);
+    }
+  };
   
   if (isLoading) {
     return (
@@ -25,19 +37,42 @@ export function UMAPVisualization({ sessionId, colorBy = 'CellType', gene }: UMA
 
   // Display backend-generated UMAP
   if (umapData?.image) {
+    const title = gene ? `UMAP - ${gene} Expression` : `UMAP - Colored by ${colorBy}`;
+    
     return (
-      <div className="bg-white rounded-lg shadow-lg p-4">
-        <div className="flex flex-col items-center">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            {gene ? `UMAP - ${gene} Expression` : `UMAP - Colored by ${colorBy}`}
-          </h3>
-          <img 
-            src={umapData.image}
-            alt={gene ? `UMAP - ${gene} expression` : `UMAP colored by ${colorBy}`}
-            className="max-w-full h-auto rounded-lg shadow"
+      <>
+        <div className="bg-white rounded-lg shadow-lg p-4 relative">
+          <ActionButtons
+            onDownloadImage={handleDownloadImage}
+            onFullscreen={openFullscreen}
+            position="top-right"
           />
+          <div className="flex flex-col items-center">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {title}
+            </h3>
+            <img 
+              src={umapData.image}
+              alt={gene ? `UMAP - ${gene} expression` : `UMAP colored by ${colorBy}`}
+              className="max-w-full h-auto rounded-lg shadow"
+            />
+          </div>
         </div>
-      </div>
+
+        <FullscreenModal
+          isOpen={isFullscreen}
+          onClose={closeFullscreen}
+          title={title}
+        >
+          <div className="flex justify-center">
+            <img 
+              src={umapData.image}
+              alt={gene ? `UMAP - ${gene} expression` : `UMAP colored by ${colorBy}`}
+              className="max-w-full h-auto rounded-lg"
+            />
+          </div>
+        </FullscreenModal>
+      </>
     );
   }
 

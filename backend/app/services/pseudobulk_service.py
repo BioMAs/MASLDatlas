@@ -53,16 +53,26 @@ class PseudobulkService:
                 continue
                 
             # Get counts
-            # Try to find raw counts
+            # Priority: explicit layer > .raw > .X
+            # WARNING: DESeq2 requires raw integer counts. If 'counts' layer is absent,
+            # falling back to .X (which may be normalized) leads to incorrect results.
             X = None
             if layer in subset.layers:
                 X = subset.layers[layer]
             elif subset.raw:
+                logger.warning(
+                    f"Layer '{layer}' not found for sample '{sample}'. "
+                    "Falling back to .raw.X — ensure these are raw integer counts for DESeq2."
+                )
                 try:
                     X = subset.raw.X
-                except:
+                except Exception:
                     X = subset.X
             else:
+                logger.warning(
+                    f"Layer '{layer}' not found and no .raw for sample '{sample}'. "
+                    "Falling back to .X — ensure these are raw integer counts for DESeq2."
+                )
                 X = subset.X 
             
             # Sum
@@ -120,8 +130,8 @@ class PseudobulkService:
         """
         logger.info(f"Running DESeq2 with design ~{design_factor}")
         
-        # Ensure integer counts
-        counts_df = counts_df.round().astype(int)
+        # Ensure integer counts (int64 to avoid overflow on large datasets)
+        counts_df = counts_df.round().astype('int64')
         
         # Remove genes with 0 counts everywhere
         counts_df = counts_df.loc[:, (counts_df != 0).any(axis=0)]

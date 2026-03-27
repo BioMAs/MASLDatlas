@@ -10,10 +10,17 @@ export const visualizationService = {
    */
   async generateUMAP(
     sessionId: string,
-    colorBy: string = 'CellType'
+    colorBy: string = 'CellType',
+    filterColumn?: string,
+    filterValues?: string[]
   ): Promise<VisualizationResponse> {
+    const params: any = { color_by: colorBy };
+    if (filterColumn && filterValues && filterValues.length > 0) {
+      params.filter_column = filterColumn;
+      params.filter_values = filterValues; // Axios handles arrays by default, but check serialization if needed
+    }
     const response = await apiClient.get(`/visualization/umap/${sessionId}`, {
-      params: { color_by: colorBy },
+      params,
     });
     return response.data;
   },
@@ -24,13 +31,20 @@ export const visualizationService = {
   async generateViolin(
     sessionId: string,
     genes: string[],
-    groupby: string = 'CellType'
+    groupby: string = 'CellType',
+    filterColumn?: string,
+    filterValues?: string[]
   ): Promise<VisualizationResponse> {
+    const params: any = {
+      genes: genes.join(','),
+      groupby,
+    };
+    if (filterColumn && filterValues && filterValues.length > 0) {
+      params.filter_column = filterColumn;
+      params.filter_values = filterValues;
+    }
     const response = await apiClient.get(`/visualization/violin/${sessionId}`, {
-      params: {
-        genes: genes.join(','),
-        groupby,
-      },
+      params,
     });
     return response.data;
   },
@@ -41,13 +55,20 @@ export const visualizationService = {
   async generateDotPlot(
     sessionId: string,
     genes: string[],
-    groupby: string = 'CellType'
+    groupby: string = 'CellType',
+    filterColumn?: string,
+    filterValues?: string[]
   ): Promise<VisualizationResponse> {
+    const params: any = {
+      genes: genes.join(','),
+      groupby,
+    };
+    if (filterColumn && filterValues && filterValues.length > 0) {
+      params.filter_column = filterColumn;
+      params.filter_values = filterValues;
+    }
     const response = await apiClient.get(`/visualization/dotplot/${sessionId}`, {
-      params: {
-        genes: genes.join(','),
-        groupby,
-      },
+      params,
     });
     return response.data;
   },

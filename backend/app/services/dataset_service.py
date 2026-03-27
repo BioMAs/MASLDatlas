@@ -200,6 +200,38 @@ class DatasetService:
         """Filter dataset by metadata column"""
         mask = adata.obs[filter_column].isin(filter_values)
         return adata[mask].copy()
+    
+    def filter_by_clusters(
+        self,
+        adata: sc.AnnData,
+        clusters: list,
+        cluster_column: str = "CellType"
+    ) -> sc.AnnData:
+        """
+        Filter dataset by cluster/cell type selection
+        
+        Args:
+            adata: AnnData object
+            clusters: List of cluster/cell type names to keep
+            cluster_column: Column name containing cluster assignments
+            
+        Returns:
+            Filtered AnnData object
+        """
+        if cluster_column not in adata.obs.columns:
+            raise ValueError(f"Column '{cluster_column}' not found in dataset")
+        
+        if not clusters:
+            logger.warning("No clusters provided for filtering, returning original dataset")
+            return adata.copy()
+        
+        mask = adata.obs[cluster_column].isin(clusters)
+        filtered_adata = adata[mask].copy()
+        
+        logger.info(f"🔍 Filtered dataset: {adata.n_obs} → {filtered_adata.n_obs} cells "
+                   f"(kept {len(clusters)} clusters from {cluster_column})")
+        
+        return filtered_adata
 
 # Global instance
 dataset_service = DatasetService()

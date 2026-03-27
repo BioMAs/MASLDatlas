@@ -86,7 +86,7 @@ export function DatasetSelector({ onDatasetLoaded }: DatasetSelectorProps) {
           {organisms &&
             Object.entries(organisms).map(([key, data]) => (
               <option key={key} value={key}>
-                {data.status === 'Available' ? '✅' : '⏳'} {key}
+                {data.status === 'Available' ? '[Available]' : '[In Progress]'} {key}
               </option>
             ))}
         </select>

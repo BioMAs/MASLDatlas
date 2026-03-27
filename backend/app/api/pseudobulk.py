@@ -4,12 +4,69 @@ from typing import List, Optional, Dict, Any
 from loguru import logger
 import pandas as pd
 import numpy as np
+import io
+import base64
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from app.api.datasets import current_dataset
 from app.services.dataset_service import dataset_service
 from app.services.pseudobulk_service import pseudobulk_service
 
 router = APIRouter()
+
+
+def _compute_pca_image(counts_df: pd.DataFrame, metadata_df: pd.DataFrame, condition_col: str) -> Optional[str]:
+    """Compute PCA on pseudo-bulk counts and return base64 PNG."""
+    try:
+        X = np.log1p(counts_df.values.astype(float))
+        X = X - X.mean(axis=0)
+        std = X.std(axis=0)
+        mask_var = std > 0
+        if mask_var.sum() == 0:
+            return None
+        X = X[:, mask_var] / std[mask_var]
+
+        n_components = min(2, X.shape[0] - 1, X.shape[1])
+        if n_components < 2:
+            return None
+
+        U, S, _ = np.linalg.svd(X, full_matrices=False)
+        scores = U[:, :2] * S[:2]
+        var_exp = (S[:2] ** 2) / (S ** 2).sum() * 100
+
+        conditions = metadata_df[condition_col].values
+        unique_conds = np.unique(conditions)
+        cmap = plt.cm.Set2(np.linspace(0, 1, len(unique_conds)))
+
+        fig, ax = plt.subplots(figsize=(7, 6))
+        for cond, color in zip(unique_conds, cmap):
+            m = conditions == cond
+            ax.scatter(scores[m, 0], scores[m, 1], label=str(cond), color=color,
+                       s=120, edgecolors='white', linewidth=0.8, zorder=3)
+
+        for i, sample in enumerate(counts_df.index):
+            ax.annotate(str(sample), (scores[i, 0], scores[i, 1]),
+                        fontsize=7, ha='center', va='bottom', color='#444444')
+
+        ax.set_xlabel(f'PC1 ({var_exp[0]:.1f}% variance)', fontsize=11)
+        ax.set_ylabel(f'PC2 ({var_exp[1]:.1f}% variance)', fontsize=11)
+        ax.set_title('PCA — Pseudo-bulk Samples', fontsize=13, fontweight='bold')
+        ax.legend(title=condition_col, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+        ax.grid(True, alpha=0.25, linestyle='--')
+        ax.set_facecolor('#fafafa')
+        plt.tight_layout()
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+        buf.seek(0)
+        img_b64 = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close(fig)
+        return f"data:image/png;base64,{img_b64}"
+    except Exception as e:
+        logger.warning(f"PCA plot failed (non-blocking): {e}")
+        return None
 
 class PseudobulkRequest(BaseModel):
     sample_col: str = "Sample" # Column identifying replicates
@@ -72,6 +129,9 @@ async def run_pseudobulk(
         # Contrast format: [variable, target, reference]
         contrast = [request.condition_col, request.target_level, request.reference_level]
         
+        # Compute PCA image (non-blocking)
+        pca_image = _compute_pca_image(counts, meta, request.condition_col)
+
         res = pseudobulk_service.run_deseq2(
             counts_df=counts,
             metadata_df=meta,
@@ -102,7 +162,8 @@ async def run_pseudobulk(
             "results": results_list,
             "sample_count": len(counts),
             "design": f"~{request.condition_col}",
-            "contrast": f"{request.target_level} vs {request.reference_level}"
+            "contrast": f"{request.target_level} vs {request.reference_level}",
+            "pca_image": pca_image
         }
         
     except Exception as e:

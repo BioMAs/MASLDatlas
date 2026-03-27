@@ -8,6 +8,7 @@ import type {
   DatasetInfo,
   OrganismsResponse,
   GeneExpressionResponse,
+  SubsetStats,
 } from '../types/api';
 
 export const datasetService = {
@@ -36,6 +37,14 @@ export const datasetService = {
   },
 
   /**
+   * Get all genes (var_names) for the dataset
+   */
+  async getDatasetGenes(sessionId: string): Promise<string[]> {
+    const response = await apiClient.get(`/datasets/genes/${sessionId}`);
+    return response.data.genes;
+  },
+
+  /**
    * Get gene expression data
    */
   async getGeneExpression(
@@ -45,6 +54,20 @@ export const datasetService = {
     const response = await apiClient.get(
       `/datasets/gene-expression/${sessionId}/${gene}`
     );
+    return response.data;
+  },
+
+  /**
+   * Get stats for a subset of the dataset
+   */
+  async getSubsetStats(
+    sessionId: string, 
+    filterColumn: string, 
+    filterValue: string
+  ): Promise<SubsetStats> {
+    const response = await apiClient.get<SubsetStats>(`/datasets/subset-stats/${sessionId}`, {
+      params: { filter_column: filterColumn, filter_value: filterValue }
+    });
     return response.data;
   },
 

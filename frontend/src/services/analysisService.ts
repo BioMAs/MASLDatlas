@@ -120,4 +120,84 @@ export const analysisService = {
     });
     return response.data;
   },
+
+  /**
+   * Run CollecTRI Analysis (Decoupler)
+   */
+  async runCollectri(deseqResults:any[], organism: string): Promise<any> {
+    const response = await apiClient.post('/decoupler/collectri', {
+      deseq_results: deseqResults,
+      organism
+    });
+    return response.data;
+  },
+
+  /**
+   * Run PROGENy Analysis (Decoupler)
+   */
+  async runProgeny(deseqResults:any[], organism: string): Promise<any> {
+    const response = await apiClient.post('/decoupler/progeny', {
+      deseq_results: deseqResults,
+      organism
+    });
+    return response.data;
+  },
+
+  /**
+   * Run MSigDB ORA Analysis (Decoupler)
+   */
+  async runMsigdb(deseqResults: any[], organism: string): Promise<any> {
+    const response = await apiClient.post('/decoupler/msigdb', {
+      deseq_results: deseqResults,
+      organism,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get MSigDB running-score curve for a specific gene set
+   */
+  async runMsigdbRunningScore(deseqResults: any[], geneSetName: string): Promise<any> {
+    const response = await apiClient.post('/decoupler/msigdb/running-score', {
+      deseq_results: deseqResults,
+      gene_set_name: geneSetName,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get CollecTRI volcano plot for a specific TF
+   */
+  async runCollectriVolcano(deseqResults: any[], tfName: string, nTargets: number = 20): Promise<any> {
+    const response = await apiClient.post('/decoupler/collectri/volcano', {
+      deseq_results: deseqResults,
+      tf_name: tfName,
+      n_targets: nTargets,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get CollecTRI network plot for a specific TF
+   */
+  async runCollectriNetwork(deseqResults: any[], tfName: string, nTargets: number = 20): Promise<any> {
+    const response = await apiClient.post('/decoupler/collectri/network', {
+      deseq_results: deseqResults,
+      tf_name: tfName,
+      n_targets: nTargets,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get PROGENy target genes barplot for a specific pathway
+   */
+  async runProgenyTargets(deseqResults: any[], pathwayName: string, nGenes: number = 50): Promise<any> {
+    const response = await apiClient.post('/decoupler/progeny/targets', {
+      deseq_results: deseqResults,
+      pathway_name: pathwayName,
+      n_genes: nGenes,
+    });
+    return response.data;
+  },
 };
