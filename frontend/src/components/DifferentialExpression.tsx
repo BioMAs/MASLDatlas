@@ -71,6 +71,11 @@ export function DifferentialExpression({ sessionId, filteredSessionId, cellTypes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessionId]);
 
+  // Auto-switch to enrichment bottom panel once DGE has run
+  useEffect(() => {
+    if (isSuccess) setBottomPanel('enrichment');
+  }, [isSuccess]);
+
   // Violin-gene query (lazy — only fetches when selectedGene is set)
   const { data: violinData, isFetching: loadingViolin } = useQuery({
     queryKey: ['violin-gene', activeSessionId, selectedGene],

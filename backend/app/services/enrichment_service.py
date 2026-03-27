@@ -639,11 +639,25 @@ class EnrichmentService:
             Tuple of (enrichment scores, dotplot image)
         """
         logger.info(f"📚 Running MSigDB {gene_sets} analysis")
+
+        # Human-readable labels for plot titles
+        _collection_labels = {
+            'hallmark': 'Hallmark',
+            'c2.cgp': 'Chemical & Genetic Perturbations',
+            'c5.go.bp': 'GO Biological Process',
+            'c6': 'Oncogenic Signatures',
+        }
+        collection_label = _collection_labels.get(gene_sets, gene_sets)
         
         try:
             # Get MSigDB gene sets via decoupler
             msigdb = dc.get_resource('MSigDB')
-            hallmark = msigdb[msigdb['collection'] == 'hallmark']
+            gene_set_df = msigdb[msigdb['collection'] == gene_sets]
+            if gene_set_df.empty:
+                raise ValueError(
+                    f"MSigDB collection '{gene_sets}' returned no gene sets. "
+                    f"Available collections: {msigdb['collection'].unique().tolist()}"
+                )
             
             # Prepare matrix
             mat = deseq_results[['log2FoldChange']].copy()
@@ -652,7 +666,7 @@ class EnrichmentService:
             # Run ORA (Over-Representation Analysis)
             ora_results = dc.run_ora(
                 mat=mat.T,
-                net=hallmark,
+                net=gene_set_df,
                 source='geneset',
                 target='genesymbol',
                 verbose=False
@@ -669,7 +683,7 @@ class EnrichmentService:
             ax.set_yticks(range(len(scores)))
             ax.set_yticklabels(scores.index)
             ax.set_xlabel('-Log10 P-value')
-            ax.set_title('MSigDB Hallmark Enrichment')
+            ax.set_title(f'MSigDB {collection_label} Enrichment')
             plt.tight_layout()
             
             dotplot_img = self._fig_to_base64(fig)

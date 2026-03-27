@@ -34,6 +34,16 @@ class DecouplerRequest(BaseModel):
         "human",
         description="Species: `human`, `mouse`, or `zebrafish`.",
     )
+    collection: str = Field(
+        "hallmark",
+        description=(
+            "MSigDB collection to use for ORA. Options: "
+            "`hallmark` (50 Hallmark gene sets), "
+            "`c2.cgp` (Chemical & Genetic Perturbations), "
+            "`c5.go.bp` (GO Biological Process), "
+            "`c6` (Oncogenic Signatures)."
+        ),
+    )
 
 
 class TFVisualizationRequest(BaseModel):
@@ -338,7 +348,7 @@ async def run_msigdb(request: DecouplerRequest):
             deseq_df = deseq_df.set_index("gene")
 
         enrichment_scores, dotplot_img = enrichment_service.run_msigdb_analysis(
-            deseq_df, gene_sets="hallmark"
+            deseq_df, gene_sets=request.collection
         )
 
         return MSigDBResponse(
