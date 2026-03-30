@@ -38,12 +38,9 @@ class AnalysisService:
         """
         logger.info(f"🧬 Running DE: {group1} vs {group2}")
         
-        # Create a copy for DE analysis
-        adata_de = adata.copy()
-        
-        # Filter to only groups of interest
-        mask = adata_de.obs[groupby].isin([group1, group2])
-        adata_de = adata_de[mask].copy()
+        # Filter to only groups of interest (single copy, no intermediate full copy)
+        mask = adata.obs[groupby].isin([group1, group2])
+        adata_de = adata[mask].copy()
         
         # Set ident for comparison
         adata_de.obs['ident'] = adata_de.obs[groupby]

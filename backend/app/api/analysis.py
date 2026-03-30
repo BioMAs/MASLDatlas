@@ -59,6 +59,16 @@ async def differential_expression(
              adata = dataset_service.load_dataset(organism, dataset_name, size_option="full")
         except:
              adata = current_dataset[session_id]
+
+        # Check cache before computing
+        import hashlib as _hashlib
+        cache_service = get_cache_service()
+        _cache_parts = f"dge:{session_id}:{request.group1}:{request.group2}:{request.groupby}:{request.method}:{request.min_logfc}:{request.max_pval}"
+        _cache_key = _hashlib.sha256(_cache_parts.encode()).hexdigest()[:20]
+        _cached = cache_service.get_result(_cache_key)
+        if _cached is not None:
+            logger.info(f"DEG cache HIT: {_cache_key}")
+            return _cached
         
         result = analysis_service.differential_expression(
             adata,
@@ -75,11 +85,13 @@ async def differential_expression(
             (result['pvals_adj'] <= request.max_pval)
         ]
         
-        return {
+        response = {
             "success": True,
             "n_genes": len(result),
             "results": result.to_dict(orient='records')
         }
+        cache_service.set_result(_cache_key, response)
+        return response
         
     except Exception as e:
         logger.error(f"Error in differential expression: {e}")

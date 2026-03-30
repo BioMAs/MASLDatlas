@@ -1,16 +1,152 @@
 """
 API endpoints for visualizations
 """
+import hashlib
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from loguru import logger
 
 from app.services.visualization_service import visualization_service
 from app.api.datasets import current_dataset
+from app.services.cache_service import get_cache_service
 
 router = APIRouter()
 
-@router.get("/umap/{session_id}")
+
+# ── Client-side data endpoints ──────────────────────────────────────────────
+
+@router.get("/umap-data/{session_id}")
+async def get_umap_data(
+    session_id: str,
+    color_by: str = Query("CellType", description="Column or gene to colour by"),
+    filter_column: Optional[str] = Query(None),
+    filter_values: Optional[List[str]] = Query(None),
+):
+    """Return raw UMAP coordinates for client-side Plotly rendering."""
+    if session_id not in current_dataset:
+        raise HTTPException(status_code=404, detail="Dataset not loaded")
+
+    cache = get_cache_service()
+    parts = f"umap-data:{session_id}:{color_by}:{filter_column}:{sorted(filter_values or [])}"
+    cache_key = hashlib.sha256(parts.encode()).hexdigest()[:20]
+    cached = cache.get_result(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        adata = current_dataset[session_id]
+        if filter_column and filter_values:
+            if filter_column not in adata.obs.columns:
+                raise HTTPException(status_code=400, detail=f"Filter column '{filter_column}' not found")
+            adata = adata[adata.obs[filter_column].isin(filter_values)]
+
+        result = {"success": True, **visualization_service.extract_umap_data(adata, color_by)}
+        cache.set_result(cache_key, result)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting UMAP data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/violin-data/{session_id}")
+async def get_violin_data(
+    session_id: str,
+    genes: str = Query(..., description="Comma-separated gene names"),
+    groupby: str = Query("CellType"),
+    filter_column: Optional[str] = Query(None),
+    filter_values: Optional[List[str]] = Query(None),
+):
+    """Return per-cell expression per group for client-side Plotly violin."""
+    if session_id not in current_dataset:
+        raise HTTPException(status_code=404, detail="Dataset not loaded")
+
+    gene_list = [g.strip() for g in genes.split(',')]
+
+    cache = get_cache_service()
+    parts = f"violin-data:{session_id}:{','.join(sorted(gene_list))}:{groupby}:{filter_column}:{sorted(filter_values or [])}"
+    cache_key = hashlib.sha256(parts.encode()).hexdigest()[:20]
+    cached = cache.get_result(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        adata = current_dataset[session_id]
+        if filter_column and filter_values:
+            if filter_column not in adata.obs.columns:
+                raise HTTPException(status_code=400, detail=f"Filter column '{filter_column}' not found")
+            adata = adata[adata.obs[filter_column].isin(filter_values)]
+            if groupby in adata.obs and hasattr(adata.obs[groupby], 'cat'):
+                adata.obs[groupby] = adata.obs[groupby].cat.remove_unused_categories()
+
+        var_names_set = set(adata.var_names)
+        var_names_lower = None
+        final_genes = []
+        for g in gene_list:
+            if g in var_names_set:
+                final_genes.append(g)
+            else:
+                if var_names_lower is None:
+                    var_names_lower = {n.lower(): n for n in adata.var_names}
+                canonical = var_names_lower.get(g.lower())
+                if canonical:
+                    final_genes.append(canonical)
+                else:
+                    raise HTTPException(status_code=404, detail=f"Gene not found: {g}")
+
+        result = {"success": True, **visualization_service.extract_violin_data(adata, final_genes, groupby)}
+        cache.set_result(cache_key, result)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting violin data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dotplot-data/{session_id}")
+async def get_dotplot_data(
+    session_id: str,
+    genes: str = Query(..., description="Comma-separated gene names"),
+    groupby: str = Query("CellType"),
+    filter_column: Optional[str] = Query(None),
+    filter_values: Optional[List[str]] = Query(None),
+):
+    """Return mean expression + fraction expressing for client-side Plotly dot plot."""
+    if session_id not in current_dataset:
+        raise HTTPException(status_code=404, detail="Dataset not loaded")
+
+    gene_list = [g.strip() for g in genes.split(',')]
+
+    cache = get_cache_service()
+    parts = f"dotplot-data:{session_id}:{','.join(sorted(gene_list))}:{groupby}:{filter_column}:{sorted(filter_values or [])}"
+    cache_key = hashlib.sha256(parts.encode()).hexdigest()[:20]
+    cached = cache.get_result(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        adata = current_dataset[session_id]
+        if filter_column and filter_values:
+            if filter_column not in adata.obs.columns:
+                raise HTTPException(status_code=400, detail=f"Filter column '{filter_column}' not found")
+            adata = adata[adata.obs[filter_column].isin(filter_values)]
+
+        missing = [g for g in gene_list if g not in adata.var_names]
+        if missing:
+            raise HTTPException(status_code=404, detail=f"Genes not found: {', '.join(missing)}")
+
+        result = {"success": True, **visualization_service.extract_dotplot_data(adata, gene_list, groupby)}
+        cache.set_result(cache_key, result)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting dotplot data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 async def generate_umap(
     session_id: str,
     color_by: str = Query("CellType", description="Column to color by"),

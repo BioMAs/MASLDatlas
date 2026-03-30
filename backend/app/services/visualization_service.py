@@ -19,8 +19,8 @@ class VisualizationService:
     def __init__(self):
         # Set scanpy figure parameters
         sc.set_figure_params(
-            dpi=150,
-            dpi_save=300,
+            dpi=96,
+            dpi_save=150,
             format='png',
             figsize=(10, 8),
             fontsize=12,
@@ -361,6 +361,127 @@ class VisualizationService:
             plt.close('all')
             return None
     
+    # ── Client-side data extraction methods ──────────────────────────────
+
+    def extract_umap_data(
+        self,
+        adata: sc.AnnData,
+        color_by: str = "CellType"
+    ) -> Dict[str, Any]:
+        """Extract UMAP coordinates + colour values for client-side rendering."""
+        logger.info(f"📦 Extracting UMAP data, color_by={color_by}")
+
+        if 'X_umap' not in adata.obsm:
+            raise ValueError("UMAP coordinates not found in dataset")
+
+        coords = adata.obsm['X_umap']
+        x = coords[:, 0].tolist()
+        y = coords[:, 1].tolist()
+
+        if color_by in adata.obs.columns:
+            raw = adata.obs[color_by]
+            categories = raw.astype(str).tolist()
+            unique_categories = sorted(raw.astype(str).unique().tolist())
+            is_continuous = False
+        elif color_by in adata.var_names:
+            layer = 'scvi_normalized' if 'scvi_normalized' in adata.layers else None
+            if layer:
+                import scipy.sparse as sp
+                expr = adata[:, color_by].layers[layer]
+                vals = (expr.toarray().flatten() if sp.issparse(expr) else np.array(expr).flatten()).tolist()
+            else:
+                import scipy.sparse as sp
+                raw_x = adata[:, color_by].X
+                vals = (raw_x.toarray().flatten() if sp.issparse(raw_x) else np.array(raw_x).flatten()).tolist()
+            categories = vals
+            unique_categories = []
+            is_continuous = True
+        else:
+            raise ValueError(f"'{color_by}' not found in obs columns or var_names")
+
+        return {
+            "x": x,
+            "y": y,
+            "categories": categories,
+            "unique_categories": unique_categories,
+            "color_by": color_by,
+            "is_continuous": is_continuous,
+            "n_cells": len(x),
+        }
+
+    def extract_violin_data(
+        self,
+        adata: sc.AnnData,
+        genes: List[str],
+        groupby: str = "CellType",
+        max_cells_per_group: int = 1000
+    ) -> Dict[str, Any]:
+        """Extract per-cell expression per group, sampled to max_cells_per_group,
+        for client-side violin rendering."""
+        logger.info(f"📦 Extracting violin data for {genes} grouped by {groupby}")
+
+        groups = sorted(adata.obs[groupby].astype(str).unique().tolist())
+        layer = 'scvi_normalized' if 'scvi_normalized' in adata.layers else None
+
+        data: Dict[str, Dict[str, List[float]]] = {}
+        import scipy.sparse as sp
+        import random
+
+        for gene in genes:
+            data[gene] = {}
+            for group in groups:
+                mask = adata.obs[groupby].astype(str) == group
+                subset = adata[mask, gene]
+                if layer:
+                    expr = subset.layers[layer]
+                    vals = (expr.toarray().flatten() if sp.issparse(expr) else np.array(expr).flatten()).tolist()
+                else:
+                    raw_x = subset.X
+                    vals = (raw_x.toarray().flatten() if sp.issparse(raw_x) else np.array(raw_x).flatten()).tolist()
+                if len(vals) > max_cells_per_group:
+                    vals = random.sample(vals, max_cells_per_group)
+                data[gene][group] = vals
+
+        return {"genes": genes, "groups": groups, "data": data}
+
+    def extract_dotplot_data(
+        self,
+        adata: sc.AnnData,
+        genes: List[str],
+        groupby: str = "CellType"
+    ) -> Dict[str, Any]:
+        """Extract mean expression + fraction expressing per group per gene
+        for client-side dot plot rendering."""
+        logger.info(f"📦 Extracting dotplot data for {genes} grouped by {groupby}")
+
+        groups = sorted(adata.obs[groupby].astype(str).unique().tolist())
+        layer = 'scvi_normalized' if 'scvi_normalized' in adata.layers else None
+
+        mean_expr: Dict[str, Dict[str, float]] = {g: {} for g in genes}
+        frac_expr: Dict[str, Dict[str, float]] = {g: {} for g in genes}
+
+        import scipy.sparse as sp
+
+        for group in groups:
+            mask = adata.obs[groupby].astype(str) == group
+            subset = adata[mask]
+            for gene in genes:
+                if layer:
+                    e = subset[:, gene].layers[layer]
+                    vals = (e.toarray().flatten() if sp.issparse(e) else np.array(e).flatten())
+                else:
+                    e = subset[:, gene].X
+                    vals = (e.toarray().flatten() if sp.issparse(e) else np.array(e).flatten())
+                mean_expr[gene][group] = float(np.mean(vals))
+                frac_expr[gene][group] = float(np.mean(vals > 0))
+
+        return {
+            "genes": genes,
+            "groups": groups,
+            "mean_expression": mean_expr,
+            "fraction_expressing": frac_expr,
+        }
+
     def generate_interactive_violin(
         self,
         adata: sc.AnnData,
@@ -422,7 +543,7 @@ class VisualizationService:
     def _fig_to_base64(self, fig) -> str:
         """Convert matplotlib figure to base64 string"""
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+        fig.savefig(buf, format='png', bbox_inches='tight', dpi=96)
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode('utf-8')
         plt.close(fig)
